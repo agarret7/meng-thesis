@@ -1,0 +1,14 @@
+%
+% LaTeX Macros
+% Austin J. Garrett
+%
+
+% Packages
+\usepackage{xcolor,colortbl}
+\usepackage{xifthen}
+
+% Todo
+\newcommand{\todo}[1][] {
+  \color{blue}\textsc{TODO}: \color{black}
+  \ifthenelse{\equal{#1}{}}{replace me}{#1}%
+}

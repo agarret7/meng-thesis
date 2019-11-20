@@ -455,8 +455,8 @@ by\par
 \par
 \@prevdegrees
 \par
-\choosecase{Submitted to the} \choosecase{\@department} \\
-\choosecase{in partial fulfillment of the requirements for the}
+\choosecase{} \choosecase{\@department} \\
+\choosecase{Proposal for Thesis Research in partial fulfillment of the requirements for the}
 \choosecase{\@degreeword} 
 \choosecase{of}
 \par

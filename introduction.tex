@@ -15,10 +15,50 @@
 %% problems -- focus on the original work that you are doing, which is distinct
 %% form and important to other work being done in your field.
 
-\chapter{Introduction}
+\chapter{Thesis Proposal}
 
-\todo
+\section{Introduction}
 
-\section{Placeholder}
+Hook: The past decade has seen a flourishing of highly powerful computer vision techniques.
 
-\todo
+Gap: Yet the shortcomings of neural techniques have only grown increasingly urgent
+in proportion to their dominance. [IDENTIFY COMMON FAILURE MODES OF NEURAL
+TECHNIQUES].
+
+Motivation: Meanwhile Monte Carlo and sampling-based techniques have seen rapid
+growth, with the creation of multiple probabilistic programming systems that
+can leverage the power of generative modeling to produce robust and intuitive
+models that are capable of expressing the problems above.
+[POTENTIALLY LIST HOW BAYESIAN REASONING CAN HANDLE THE FAILURE MODES ABOVE]
+
+In practical applications, Bayesian techniques have often been neglected due
+to the computational demands of performing inference on high-dimensional latent
+parameters. The lack of tools 
+
+We propose the development of probabilistic facilities for Bayesian real-time
+scene perception. In particular, we propose the development of three main components:
+\begin{itemize}
+  \item Toolkit corresponding to ROS pipeline, visualization, and models all
+    implemented in the Gen ecosystem. [This point requires a bit of
+    clarification of what exactly we're providing, as opposed to just throwing
+    our development environment at the reader and saying "we made some code".]
+  \item A series of problems/a dataset exploring a domain of common sense
+    reasoning tasks that traditional neural techniques fail to handle.
+  \item A methodology for composing generative models with bottom-up neural
+    detectors in the domain of visual scene perception for fast and robust
+    scene understanding.
+\end{itemize}
+
+\begin{table}
+  \begin{tabularx}{\textwidth}{|X|c|}
+    \hline
+    \textbf{Task} & \textbf{Expected Completion} \\
+    \hline
+    Development of realtime ROS-based particle filter framework with visualization & Jan 15th \\
+    \hline
+    Two-level neuro-predictive generative model and associated inference procedure & Jan 30th \\
+    \hline
+    Some project involving replacing the neural component with more distributed detectors that can be modeled probabilistically (hierarchical generalization of the research from January). This needs to be broken up into more digestible tasks, and we need consideration of exactly what form this takes. & April 30th \\
+    \hline
+  \end{tabularx}
+\end{table}

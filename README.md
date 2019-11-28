@@ -31,6 +31,10 @@ Related Works
         Deep Object Pose Estimation
         PoseCNN
 
+    Inverse Graphics
+        Picture
+        Analysis by Synthesis
+
     Bayesian inference over structured scenes
         Contact Graph Representation
             FIG: Contact graph representation (maybe from Ben's poster?)

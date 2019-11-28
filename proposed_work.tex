@@ -34,50 +34,133 @@
 
 \section{Proposed Work}
 
-\begin{table}
-  \begin{tabularx}{\textwidth}{|X|c|}
-    \hline
-    \textbf{Task} & \textbf{Expected Completion} \\
-    \hline
-    Development of realtime ROS-based particle filter framework with visualization & Jan 15th \\
-    \hline
-    Two-level neuro-predictive generative model and associated inference procedure & Jan 30th \\
-    \hline
-    Some project involving replacing the neural component with more distributed detectors that can be modeled probabilistically (hierarchical generalization of the research from January). This needs to be broken up into more digestible tasks, and we need consideration of exactly what form this takes. & April 30th \\
-    \hline
-  \end{tabularx}
-\end{table}
+  \begin{table}[h]
+    \begin{tabularx}{\textwidth}{|X|c|}
+      \hline
+      \textbf{Task} & \textbf{Expected Completion} \\
+      \hline
+      Development of realtime ROS-based particle filter framework with visualization & Jan 15th \\
+      \hline
+      Two-level neuro-predictive generative model and associated inference procedure & Jan 30th \\
+      \hline
+      Some project involving replacing the neural component with more distributed detectors that can be modeled probabilistically (hierarchical generalization of the research from January). This needs to be broken up into more digestible tasks, and we need consideration of exactly what form this takes. & April 30th \\
+      \hline
+    \end{tabularx}
+  \end{table}
 
-\todo[FIG: Bayes' net diagram 
-          SUBFIG A: static structure, dynamic parameters
-          SUBFIG B: dynamic structure, dynamic parameters]
+  \todo[FIG: Bayes' net diagram 
+            SUBFIG A: static structure, dynamic parameters
+            SUBFIG B: dynamic structure, dynamic parameters]
 
-\subsection{Composing Neural Techniques with Generative Modeling}
 
-\todo
+  \subsection{Neuro-predictive Generative Modeling}
 
-\subsection{Fixed Scene Structure, Dynamic Parameters}
+    Modeling a rendering pipeline in a fully Bayesian way suffers from certain
+    computational challenges. While guaranteed to converge to a correct
+    posterior with unlimited compute time, the non-asymptotic properties of
+    MCMC are poorly-understood. Preliminary work in inverse graphics techniques
+    applied to structured scenes supports the hypothesis that naive
+    analysis-by-synthesis approaches that leverage a full rendering pipeline
+    often fail to explore all the modes of the posterior in reasonable time bounds.
 
-\todo
+    Concretely, for scene graph $\mathcal{S}$ and continuous parameterization
+    $\vec{\nu}_\mathcal{S}$, A rendering-based likelihood relies on modeling
+    the image data using a full rendering pipeline $R(\mathcal{S},
+    \vec{\nu}_\mathcal{S}) = X$, where $X$ is a rendered image. For robustness,
+    the likelihood is modeled not directly on $X$, but on a noisy function of
+    the pixel data. The noise is modeled is a mixture of a uniform distribution
+    on the range of possible values and a normal distribution with mean
+    centered at the true rendered pixel value $R(\mathcal{S},
+    \vec{\nu}_\mathcal{S})$ with fixed variance $\sigma^2$, leaving the full
+    likelihood on noisy image data $Y$ as
+    \begin{equation} \label{eq:1.1}
+      p(Y | \mathcal{S}, \vec{\nu}_\mathcal{S}) = \prod_{r=1}^R\prod_{c=1}^C \paren{0.1 \cdot \frac{1}{D} + 0.9 \cdot \mathcal{N}(Y_{r,c}; R(\mathcal{S}, \vec{\nu}_\mathcal{S})_{r,c},\sigma)}
+    \end{equation}
 
-\subsection{Dynamic Scene Structure, Dynamic Parameters}
+    \ref{eq:1.1} is very high-dimensional, making it prone to capture by local
+    minima for very long periods of time. Neural networks empirically demonstrate
+    strong performance at locating strong \textit{maximum a posteriori} estimates
+    in bounded compute time. Thus, we may consider combining neural techniques
+    with MCMC to improve performance of inference.
+    
+    One perspective may consider neural networks as amortizations of the
+    inverse generative procedure. Consider a neural detector $\phi_\mathcal{S}$
+    that outputs poses under a given scene graph structure $\mathcal{S}$ (often
+    a full unconstrained 6D pose), such that $\phi_\mathcal{S}(R(\mathcal{S},
+    \vec{\nu}_\mathcal{S})) = \vec{\nu}_\mathcal{S}$. Given image data $Y$, we
+    can use the corresponding estimate $\phi_\mathcal{S}(Y)$ as an
+    initialization for some MCMC technique. However, this relies on
+    $\phi_\mathcal{S}$ robustly predicting the mode of the distribution. This
+    assumption is not guaranteed, and in fact when neural networks do fail,
+    they often fail catastrophically, estimating wildly incorrect poses that
+    suffer from the same convergence issues as an unlearned proposal
+    distribution. Part of the issue lies in the fact that there this approach
+    contains no way to reason about common failure modes of the neural detector.
+    All initializations are treated as equally valid, 
 
-\todo
+    Alternatively, we might observe that the failure modes of these neural
+    techniques are often quite predictable. When objects are too close or too
+    far away, at strange angles, or heavily occluded, the neural detector is
+    much more likely to fail. In this case, 
 
-\subsubsection{Reversible Jump MCMC}
+    Alternatively, 
+    \[
+      p(\phi(Y) | \mathcal{S}, \vec{\nu}_\mathcal{S}) = 
+    \]
 
-\todo
+    Such a model would have a likelihood defined in terms of a conditional distribution
+    over scene parameters given a static scene structure.
 
-This part is a highly relevent research goal, due to the undervaluing of
-semantic structuring of information by the neural network community. In some
-sense we are trying to provide a solution to a problem that is not fully
-visible to the community, or at the very least is thought to be "too hard" for
-current techniques. Hard grounding metrics, or at least a fuller range of
-explicitly specified common-sense tasks will go a long way in changing the
-over-skeptical perspective toward Bayesian techniques trying to answer this
-question. Thus, an important part of the thesis work will be identifying the
-gap that exists between types of problems that we'd like to solve (common sense
-reasoning), and how neural networks currently fail to address these problems,
-as well as providing as much of a solution as we can in the time available,
-which we believe will be compelling enough to demonstrate the utility of
-Bayesian methods in modern CV pipelines.
+    Prior on scene structures
+
+  \subsection{Fixed Scene Structure, Dynamic Parameters}
+
+    The first task involved with modeling neural 
+    \begin{itemize}
+      \item An end-to-end system that uses DOPE+Gen+ROS to track a fixed set of
+        objects, integrating prior knowledge about temporal consistency of
+        object trajectories via state space modeling. For this, we can use a
+        simple particle filter over object trajectories. That will help us nail
+        down the end-to-end integration aspect, and also serves as the minimal
+        example of 'filtering the output of a neural network via prior
+        knowledge'
+      \item An end-to-end system that that uses DOPE+Gen+ROS to infer scene
+        structure, integrating prior knowledge about scene graphs (e.g. contact
+        relationships) as well as temporal consistency. This version will
+        assume a static scene graph, but can be adapted into an online
+        algorithm by running the algorithm on the past e.g. 10 time steps of
+        data in sliding windows.
+      \item An end-to-end system .. that includes prior knowledge about
+        temporal consistency of scene graphs (e.g. scene graphs change
+        relatively infrequently).
+    \end{itemize}
+
+  \subsection{Dynamic Scene Structure, Dynamic Parameters}
+
+    \todo
+
+    \subsubsection{Reversible Jump MCMC}
+
+      \todo
+
+
+  \subsection{Engineering Infrastructure}
+
+    \todo
+
+    \subsubsection{Realtime Particle Filtering}
+
+    \todo
+
+    \subsubsection{Visualization}
+
+    \todo
+
+    \subsubsection{Cora Project}
+
+    \todo
+
+
+  \subsection{Extensions}
+
+    \todo

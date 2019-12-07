@@ -35,23 +35,43 @@
 \section{Proposed Work}
 
   \begin{table}[h]
-    \begin{tabularx}{\textwidth}{|X|c|}
+    \begin{tabularx}{\textwidth}{|c|X|}
       \hline
-      \textbf{Task} & \textbf{Expected Completion} \\
+      \textbf{Month} & \textbf{Work to be completed} \\
       \hline
-      Development of realtime ROS-based particle filter framework with visualization & Jan 15th \\
+      December & Thesis proposal and ROS-based infrastructure for online particle filtering and associated visualization \\
       \hline
-      Two-level neuro-predictive generative model and associated inference procedure & Jan 30th \\
+      January  & Experimentation with observational models for modeling neural detections. Writing submission to the RSS conference. \\
       \hline
-      Some project involving replacing the neural component with more distributed detectors that can be modeled probabilistically (hierarchical generalization of the research from January). This needs to be broken up into more digestible tasks, and we need consideration of exactly what form this takes. & April 30th \\
+      February & Refactoring code base and integration of the ROS particle filter and visualization components into Cora. \\
+      \hline
+      March    & Further integration/experimentation with the neural detector component (training on synthetic data, replacing with alternative architectures, training the neural component with error-correction on inference.) \\
+      \hline
+      April    & Development of thesis, documentation of work, and writing. \\
+      \hline
+      May      & Finalization of thesis and final documentation of work and code base. \\
       \hline
     \end{tabularx}
   \end{table}
 
-  \todo[FIG: Bayes' net diagram 
-            SUBFIG A: static structure, dynamic parameters
-            SUBFIG B: dynamic structure, dynamic parameters]
-
+  \begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/neural-model.png}
+    \caption{\small
+      Neural detections can be inaccurate, and violate semantic relations
+      between objects (eg. allow for object interpenetration). Given a neural
+      detector, we can treat the flat and noisy detections as observations
+      under a generative model, given prior structural information about the
+      scene. Thus we implicitly model and correct for the failure modes of
+      neural detections using uncertain prior structural knowledge. Using
+      custom inference kernels, we can potentially recover the network's
+      uncertainty, resolve impossible scenarios that violate prior knowledge,
+      or even recover qualitative pose relationships like contact (green arrow)
+      to enrich neural detections.
+    }
+    \label{fig:neural-model}
+  \end{figure}
+  
 
   \subsection{Neuro-predictive Generative Modeling}
 
@@ -61,10 +81,11 @@
     MCMC are poorly-understood. Preliminary work in inverse graphics techniques
     applied to structured scenes supports the hypothesis that naive
     analysis-by-synthesis approaches that leverage a full rendering pipeline
-    often fail to explore all the modes of the posterior in reasonable time bounds.
+    often fail to explore all the modes of the posterior in reasonable time bounds
+    \todo[WHO?]
 
     Concretely, for scene graph $\mathcal{S}$ and continuous parameterization
-    $\vec{\nu}_\mathcal{S}$, A rendering-based likelihood relies on modeling
+    $\vec{\nu}_\mathcal{S}$, a rendering-based likelihood relies on modeling
     the image data using a full rendering pipeline $R(\mathcal{S},
     \vec{\nu}_\mathcal{S}) = X$, where $X$ is a rendered image. For robustness,
     the likelihood is modeled not directly on $X$, but on a noisy function of
@@ -78,79 +99,89 @@
     \end{equation}
 
     \ref{eq:1.1} is very high-dimensional, making it prone to capture by local
-    minima for very long periods of time. Neural networks empirically demonstrate
-    strong performance at locating strong \textit{maximum a posteriori} estimates
-    in bounded compute time. Thus, we may consider combining neural techniques
-    with MCMC to improve performance of inference.
+    minima. Neural networks empirically demonstrate strong performance at
+    locating strong \textit{maximum a posteriori} estimates in bounded compute
+    time. Thus, we may consider combining neural techniques with MCMC to
+    improve performance of inference.
     
     One perspective may consider neural networks as amortizations of the
     inverse generative procedure. Consider a neural detector $\phi_\mathcal{S}$
-    that outputs poses under a given scene graph structure $\mathcal{S}$ (often
-    a full unconstrained 6D pose), such that $\phi_\mathcal{S}(R(\mathcal{S},
+    that outputs poses under a given parametrization $\mathcal{S}$ (often a
+    full unconstrained 6D pose), such that ideally $\phi_\mathcal{S}(R(\mathcal{S},
     \vec{\nu}_\mathcal{S})) = \vec{\nu}_\mathcal{S}$. Given image data $Y$, we
     can use the corresponding estimate $\phi_\mathcal{S}(Y)$ as an
-    initialization for some MCMC technique. However, this relies on
+    initialization for some MCMC technique.
+    
+    However, this method is rather unprincipled in that it uses a point
+    estimate without uncertainty quantification, thus implicitly relying on
     $\phi_\mathcal{S}$ robustly predicting the mode of the distribution. This
     assumption is not guaranteed, and in fact when neural networks do fail,
-    they often fail catastrophically, estimating wildly incorrect poses that
-    suffer from the same convergence issues as an unlearned proposal
-    distribution. Part of the issue lies in the fact that there this approach
-    contains no way to reason about common failure modes of the neural detector.
-    All initializations are treated as equally valid, 
+    they often fail catastrophically, estimating wildly incorrect poses.
+    Furthermore, because it is only a heuristic and not a full proposal
+    distribution, it is not obvious how to combine neural detections across
+    multiple timesteps into a coherent picture.  The issue fundamentally lies
+    in the fact that this approach contains no way to reason about the behavior
+    of the bottom-up proposals.  If we wish to robustly use these models, we
+    need to leverage information about their behavior.
 
-    Alternatively, we might observe that the failure modes of these neural
-    techniques are often quite predictable. When objects are too close or too
-    far away, at strange angles, or heavily occluded, the neural detector is
-    much more likely to fail. In this case, 
+    Crucially, we can observe that the failure modes of these neural techniques
+    are often quite predictable with the use of certain easy to compute
+    statistics. When objects are too close or too far away, at strange angles,
+    or heavily occluded, the neural detector is much more likely to fail. To
+    account for these configurations, we propose instead modeling the neural
+    detections as observations to a generative model that attempts to retrieve
+    the latent scene graph $\mathcal{S}$ that predicts the detections from the
+    neural network $\phi_\mathcal{S}(Y)$.
 
-    Alternatively, 
-    \[
-      p(\phi(Y) | \mathcal{S}, \vec{\nu}_\mathcal{S}) = 
-    \]
+    A minimal observational model may be a simple mixture between a Gaussian
+    and a uniform distribution over the entire space
+    \begin{equation} \label{eq:1.2}
+      p(\phi_\mathcal{S}(Y) | \mathcal{S}, \vec{\nu}_\mathcal{S}) = \mathcal{N}()
+    \end{equation}
 
-    Such a model would have a likelihood defined in terms of a conditional distribution
-    over scene parameters given a static scene structure.
+    Even such a simple observational model can be sufficient to filter some
+    noise from the bottom-up proposal, by roughly modeling that the neural
+    network sometimes makes mistakes (although in this case we don't use
+    information about whether this is more or less likely at any given time).
 
-    Prior on scene structures
+  \subsection{Experimentation}
 
-  \subsection{Fixed Scene Structure, Dynamic Parameters}
+    The first task concrete task is creating the infrastructure sufficient for
+    creating a minimal demo. For this we will develop an end-to-end system that
+    uses DOPE+Gen+ROS to track a fixed set of objects, integrating prior
+    knowledge about temporal consistency of object trajectories via state space
+    modeling. For this, we can use a simple particle filter over object
+    trajectories. This will help us nail down the end-to-end integration
+    aspect, and also serves as the minimal example of ``filtering the output of
+    a neural network via prior knowledge''. For simplicity we will initially
+    work with an observation model of the form \ref{eq:1.2}. Even with this
+    simple model, we hypothesis it is possible to filter spurious neural
+    detections using physical assumptions of object persistence and intertial
+    trajectories.
 
-    The first task involved with modeling neural 
-    \begin{itemize}
-      \item An end-to-end system that uses DOPE+Gen+ROS to track a fixed set of
-        objects, integrating prior knowledge about temporal consistency of
-        object trajectories via state space modeling. For this, we can use a
-        simple particle filter over object trajectories. That will help us nail
-        down the end-to-end integration aspect, and also serves as the minimal
-        example of 'filtering the output of a neural network via prior
-        knowledge'
-      \item An end-to-end system that that uses DOPE+Gen+ROS to infer scene
-        structure, integrating prior knowledge about scene graphs (e.g. contact
-        relationships) as well as temporal consistency. This version will
-        assume a static scene graph, but can be adapted into an online
-        algorithm by running the algorithm on the past e.g. 10 time steps of
-        data in sliding windows.
-      \item An end-to-end system .. that includes prior knowledge about
-        temporal consistency of scene graphs (e.g. scene graphs change
-        relatively infrequently).
-    \end{itemize}
-
-  \subsection{Dynamic Scene Structure, Dynamic Parameters}
-
-    \todo
+    Use the full pipeline to infer scene structure, integrating prior knowledge
+    about scene graphs (e.g. contact relationships) as well as temporal
+    consistency. This version will assume a static scene graph, but can later
+    be adapted into an online algorithm by running the algorithm on the past
+    e.g. 10 time steps of data in sliding windows.
+    Use the full pipeline with a prior about temporal consistency of scene
+    graphs (e.g. scene graphs change relatively infrequently).
 
     \subsubsection{Reversible Jump MCMC}
 
-      \todo
+      Allowing MH moves between model parametrizations requires special
+      mathematical consideration to ensure detailed balance is satisfied.
+      \todo[Insert math]
 
 
   \subsection{Engineering Infrastructure}
 
-    \todo
+    All of this experimentation requires sophisticated and novel infrastructure 
+    for the prototyping of complex custom inference kernels and observational models
+    to be applied in realtime 
 
     \subsubsection{Realtime Particle Filtering}
 
-    \todo
 
     \subsubsection{Visualization}
 
@@ -163,4 +194,5 @@
 
   \subsection{Extensions}
 
-    \todo
+    If time permits, there are several possible extensions to this work that
+    may be considered. One relates \todo

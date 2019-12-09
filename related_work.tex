@@ -1,5 +1,3 @@
-%% TODO: insert high-level summary of this chapter
-
 \section{Prior and Related Works}
 
   \subsection{Accelerating Inverse Graphics}
@@ -40,7 +38,7 @@
     \cite{kundu20183d} uses a render-and-compare based loss inspired by inverse
     graphics methods to train the neural regressor.
 
-  \subsection{Bayesian Inference over Structured Scenes}
+  \subsection{Bayesian Inference over Structured Scenes} \label{section:1.2.3}
 
     Extending from this previous work on inverse graphics, we wish to construct
     generative models that contain richer \textit{semantic information} about
@@ -62,7 +60,7 @@
           semantic information about the relationship between objects, namely
           edges represent an ``on-top of'' relationship. Under this scene
           structure, only 15 parameters are necessary for specifying the same
-          scene. \todo[cite Ben]
+          scene.\cite{zinberg2019scenegraphs}
         }
         \label{fig:contact-graph}
       \end{figure}
@@ -73,8 +71,8 @@
       world frame to object. Directed edges specify the type of relative pose,
       which encodes information about the way objects are geometrically
       situated. For example, an edge may represent ``contact'', which requires
-      specifying a discrete plane of contact, a 2D translation, and a single
-      rotational degree about the plane's normal.
+      specifying a contact plane, a 2D translation, and a single rotational
+      DoF.
 
     \subsubsection{Probabilistic Scene Description Languages}
 
@@ -106,4 +104,3 @@
       this language for uncertain knowledge representation can recover
       common-sense reasoning that naturally combines prior knowledge with
       observation to obtain posteriors with rich structural information.
-      \todo[expand me, relate back to scene graph more?]

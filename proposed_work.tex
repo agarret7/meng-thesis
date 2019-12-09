@@ -39,17 +39,23 @@
       \hline
       \textbf{Month} & \textbf{Work to be completed} \\
       \hline
-      December & Thesis proposal and ROS-based infrastructure for online particle filtering and associated visualization \\
+      December & Thesis proposal and ROS-based infrastructure for online particle filtering and associated visualization. \\
       \hline
       January  & Experimentation with observational models for modeling neural detections. Writing submission to the RSS conference. \\
       \hline
-      February & Refactoring code base and integration of the ROS particle filter and visualization components into Cora. \\
+      February & Engineering detectors to be trained on synthetic data. \\
       \hline
-      March    & Further integration/experimentation with the neural detector component (training on synthetic data, replacing with alternative architectures, training the neural component with error-correction on inference.) \\
+      March    & Research on robust mixture likelihood; including the rendering-based generative model to solidify ``meta-inference'' perspective, where the neural detector is a \textit{modeled} amortization of the inference procedure. \\
       \hline
-      April    & Development of thesis, documentation of work, and writing. \\
+      April    & NeurIPS experiments (model-based inference cleanup/error correction, training detectors using generative model). \\
       \hline
-      May      & Finalization of thesis and final documentation of work and code base. \\
+      May      & Finalizing NeurIPS experimentation; writing submission. \\
+      \hline
+      June     & Translation of contact-graph representation into Cora project. \\
+      \hline
+      July     & Refactoring code base and integration of the ROS particle filter and visualization components into Cora. \\
+      \hline
+      August   & Finalization of thesis and final documentation of work and code base. \\
       \hline
     \end{tabularx}
   \end{table}
@@ -78,22 +84,23 @@
     Modeling a rendering pipeline in a fully Bayesian way suffers from certain
     computational challenges. While guaranteed to converge to a correct
     posterior with unlimited compute time, the non-asymptotic properties of
-    MCMC are poorly-understood. Preliminary work in inverse graphics techniques
-    applied to structured scenes supports the hypothesis that naive
-    analysis-by-synthesis approaches that leverage a full rendering pipeline
-    often fail to explore all the modes of the posterior in reasonable time bounds
-    \todo[WHO?]
+    MCMC are poorly-understood. Our preliminary work in inverse graphics
+    techniques applied to structured scenes supports the hypothesis that naive
+    analysis-by-synthesis approaches that only leverage a generative rendering
+    pipeline often fail to explore all the modes of the posterior in reasonable
+    time bounds.
 
-    Concretely, for scene graph $\mathcal{S}$ and continuous parameterization
-    $\vec{\nu}_\mathcal{S}$, a rendering-based likelihood relies on modeling
-    the image data using a full rendering pipeline $R(\mathcal{S},
-    \vec{\nu}_\mathcal{S}) = X$, where $X$ is a rendered image. For robustness,
-    the likelihood is modeled not directly on $X$, but on a noisy function of
-    the pixel data. The noise is modeled is a mixture of a uniform distribution
-    on the range of possible values and a normal distribution with mean
-    centered at the true rendered pixel value $R(\mathcal{S},
-    \vec{\nu}_\mathcal{S})$ with fixed variance $\sigma^2$, leaving the full
-    likelihood on noisy image data $Y$ as
+    Concretely, for scene graph $\mathcal{S}$ sampled from from a structured
+    prior program like those discussed in \ref{section:1.2.3}, and continuous
+    parameterization $\vec{\nu}_\mathcal{S}$, a rendering-based likelihood
+    relies on modeling the image data using a full rendering pipeline
+    $R(\mathcal{S}, \vec{\nu}_\mathcal{S}) = X$, where $X$ is a rendered image.
+    For robustness, the likelihood is modeled not directly on $X$, but on a
+    noisy function of the pixel data. The noise is modeled is a mixture of a
+    uniform distribution on the range of possible depth values $[0,D]$ and a
+    normal distribution with mean centered at the true rendered pixel value
+    $R(\mathcal{S}, \vec{\nu}_\mathcal{S})$ with fixed variance $\sigma^2$,
+    leaving the full likelihood on noisy image data $Y$ as
     \begin{equation} \label{eq:1.1}
       p(Y | \mathcal{S}, \vec{\nu}_\mathcal{S}) = \prod_{r=1}^R\prod_{c=1}^C \paren{0.1 \cdot \frac{1}{D} + 0.9 \cdot \mathcal{N}(Y_{r,c}; R(\mathcal{S}, \vec{\nu}_\mathcal{S})_{r,c},\sigma)}
     \end{equation}
@@ -102,15 +109,14 @@
     minima. Neural networks empirically demonstrate strong performance at
     locating strong \textit{maximum a posteriori} estimates in bounded compute
     time. Thus, we may consider combining neural techniques with MCMC to
-    improve performance of inference.
-    
-    One perspective may consider neural networks as amortizations of the
-    inverse generative procedure. Consider a neural detector $\phi_\mathcal{S}$
-    that outputs poses under a given parametrization $\mathcal{S}$ (often a
-    full unconstrained 6D pose), such that ideally $\phi_\mathcal{S}(R(\mathcal{S},
-    \vec{\nu}_\mathcal{S})) = \vec{\nu}_\mathcal{S}$. Given image data $Y$, we
-    can use the corresponding estimate $\phi_\mathcal{S}(Y)$ as an
-    initialization for some MCMC technique.
+    improve performance of inference. One perspective may consider neural
+    networks as amortizations of the inference procedure. Consider a neural
+    detector $\phi_\mathcal{S}$ that outputs poses under a given
+    parametrization $\mathcal{S}$ (often a full unconstrained 6D pose), such
+    that ideally $\phi_\mathcal{S}(R(\mathcal{S}, \vec{\nu}_\mathcal{S})) =
+    \vec{\nu}_\mathcal{S}$. Given image data $Y$, we can use the corresponding
+    estimate $\phi_\mathcal{S}(Y)$ as an initialization for some MCMC
+    technique.
     
     However, this method is rather unprincipled in that it uses a point
     estimate without uncertainty quantification, thus implicitly relying on
@@ -134,17 +140,19 @@
     neural network $\phi_\mathcal{S}(Y)$.
 
     A minimal observational model may be a simple mixture between a Gaussian
-    and a uniform distribution over the entire space
+    and a uniform distribution over the volume $V$ of the whole space
     \begin{equation} \label{eq:1.2}
-      p(\phi_\mathcal{S}(Y) | \mathcal{S}, \vec{\nu}_\mathcal{S}) = \mathcal{N}()
+      p(\phi_\mathcal{S}(Y) | \mathcal{S}, \vec{\nu}_\mathcal{S}) = 0.1 \cdot \frac{1}{V} + 0.9 \cdot \mathcal{N}(\phi_\mathcal{S}(Y); T_\mathrm{6D}(\vec{\nu}_\mathcal{S}), \sigma)
     \end{equation}
 
-    Even such a simple observational model can be sufficient to filter some
-    noise from the bottom-up proposal, by roughly modeling that the neural
-    network sometimes makes mistakes (although in this case we don't use
-    information about whether this is more or less likely at any given time).
+    Where $T_\mathrm{6D}(\vec{\nu}_\mathcal{S})$ is a projection of
+    $\vec{\nu}_\mathcal{S}$ into a 6D pose relative to the camera. Even such a
+    simple observational model can be sufficient to filter some noise from the
+    bottom-up proposal, by roughly modeling that the neural network sometimes
+    makes mistakes (although in this case we don't use information about
+    whether this is more or less likely at any given time).
 
-  \subsection{Experimentation}
+  \subsection{Neural Predictor Experimentation}
 
     The first task concrete task is creating the infrastructure sufficient for
     creating a minimal demo. For this we will develop an end-to-end system that
@@ -156,43 +164,113 @@
     a neural network via prior knowledge''. For simplicity we will initially
     work with an observation model of the form \ref{eq:1.2}. Even with this
     simple model, we hypothesis it is possible to filter spurious neural
-    detections using physical assumptions of object persistence and intertial
-    trajectories.
+    detections using physical assumptions of object persistence and inertial
+    trajectories. A very simple experiment along these lines may consist of an
+    object passing behind an occluder. As the object becomes more and more
+    occluded, the quality of the neural detections corresponding to the object
+    become poorer. A successful experiment would demonstrate our technique is
+    able to smooth out spurious detections, and maintain beliefs of the
+    object's existence once it is no longer visible in the scene.
 
-    Use the full pipeline to infer scene structure, integrating prior knowledge
-    about scene graphs (e.g. contact relationships) as well as temporal
-    consistency. This version will assume a static scene graph, but can later
-    be adapted into an online algorithm by running the algorithm on the past
-    e.g. 10 time steps of data in sliding windows.
-    Use the full pipeline with a prior about temporal consistency of scene
-    graphs (e.g. scene graphs change relatively infrequently).
+    Additional experimentation would use the full pipeline to infer scene
+    structure, integrating prior knowledge about scene graphs (e.g. contact
+    relationships) as well as temporal consistency. In this version we may
+    construct an experiment where an object rests on another object, and test
+    if we can successfully recover the ``contacting'' relationship between
+    objects. If this is successful, we may then consider pushing the supporting
+    object around and test if we can maintain stability in the relationship
+    type over time.
 
-    \subsubsection{Reversible Jump MCMC}
+  \subsection{Robust Mixture Likelihood Experimentation}
 
-      Allowing MH moves between model parametrizations requires special
-      mathematical consideration to ensure detailed balance is satisfied.
-      \todo[Insert math]
+    A natural question extending from neural modeling is how it relates back to
+    the rendering-based generative approach we initially considered. While
+    simply modeling the inverse procedure can be sufficient for decreasing
+    confidence in inaccurate detections, to increase the actual accuracy it is
+    very useful to step the neural detections with respect to how well it
+    explains the bottom-level data. Thus we might consider an extension where
+    we reintroduce the rendering generative model from intermediate flat
+    detections to the actual observation.
 
+    In this case instead of modeling just the neural network component, we also
+    can leverage information from the inference procedure. This can give us
+    insight into whether or not the neural initialization is stable with
+    respect to the image data; if we find high variance in MCMC moves we can
+    use this information to infer the detections were poor explanations for the
+    data, whereas if the moves are tightly bound in a localized region we may
+    increase our confidence in the quality of the neural detections.
+
+    This experimentation may contrast with the work expected in January; we
+    may demonstrate that given a rendering based-likelihood we can not only
+    decrease confidence in inaccurate predictions, but we can increase the
+    overall accuracy of the neural detections. For example, we may find a scene
+    in which neural detections correctly estimate position, but fail to
+    localize rotation appropriately (a common failure mode of neural
+    detections), and demonstrate that the robust mixture likelihood can recover
+    the true rotation by first recovering a possible qualitative relationship
+    (eg. object is on-top of a table), and then localize rotation on the
+    reduced parametrization.
+
+    Additional experiments may include training the neural detector using
+    samples from the scene graph generator. In this way we can enrich the
+    training data with synthetic scenes, and increase the robustness of the
+    detector when operating on samples that are well-captured by the structural
+    prior.
 
   \subsection{Engineering Infrastructure}
 
-    All of this experimentation requires sophisticated and novel infrastructure 
-    for the prototyping of complex custom inference kernels and observational models
-    to be applied in realtime 
+    All of this experimentation requires sophisticated and novel infrastructure
+    for the prototyping of complex custom inference kernels and observational
+    models to be applied in realtime. The domain of realtime scene perception
+    is heavily related to robotics applications, and thus the Robot Operating
+    System serves as a helpful abstraction for the various components that go
+    into our infrastructure. Namely, we assume asynchronous operation of
+    multiple components of the overall infrastructure, corresponding to
+    sensors, the inference backend, and visualization. These components will
+    contain several reusable artifacts that will be integrated into the broader
+    Cora project near the end of the Master's.
+
+    \subsubsection{Scene Graph Representation}
+     
+      A crucial component of the Cora project is the scene graph
+      representation. The representation used for our experimentation will be
+      in concurrent development with that of the Cora project, ideally allowing
+      us to rapidly refactor and transfer our inference techniques into the
+      Cora project.
 
     \subsubsection{Realtime Particle Filtering}
-
+      
+      The inference node receives observations from sensors as published
+      messages from sensors in realtime. We will support both online inference
+      (dropping observations if they come during particle filter updates), and
+      offline inference (queueing observations and sequentially processing them
+      with as much time as necessary). The former approach supports the online
+      demands of robotics applications, while the latter can be used for
+      unconstrained experimentation with the inference algorithm.
 
     \subsubsection{Visualization}
 
-    \todo
+      Visualization of the inference procedure is crucial for gaining intuition
+      of the failure modes and rates of convergence. In particular, it is
+      essential to be able to view the particle filter beliefs in realtime. In
+      our framework, we will use a visualization based on ROS' asynchronous
+      RViz visualizer. The inference node can actively publish its beliefs to
+      this node, creating a powerful interface for peering into the internals
+      of various inference kernels. The Cora project has large overlaps in
+      demands for inference, and so this tool will be a highly useful artifact
+      for the project overall.
 
-    \subsubsection{Cora Project}
+\section{Conclusion}
 
-    \todo
-
-
-  \subsection{Extensions}
-
-    If time permits, there are several possible extensions to this work that
-    may be considered. One relates \todo
+  In this thesis, I will consider methods for integrating uncertain symbolic
+  information with bottom-up neural proposals. We have already experimented
+  with a robust rendering-based likelihood model without neural proposals,
+  demonstrating some limited results on recovering common-sense scene
+  understanding. My next steps include using this symbolic information to
+  filter neural detections by constructing a generative model to represent the
+  possibly spurious behavior of the detector. After this I will consider
+  methods for reintegrating the rendering-based likelihood into a robust
+  mixture model in order to increase the accuracy of neural detections using
+  both structural information and analysis-by-synthesis approaches. Finally, I
+  will integrate essential components of the infrastructure into the broader
+  Cora project so they may be reused by other researchers.

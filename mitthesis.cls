@@ -469,14 +469,14 @@ at the
 \@copyrightnotice
 \par
 \vskip 3\baselineskip
-\signature{Author}{\@department \\ \@thesisdate}
+\signature{Author}{\@author \\ \@department \\ \@thesisdate}
 \par
 \vfill
 \unvbox\@titlesupervisor
 \par
 \vfill
-\signature{Accepted by}{\@chairmanname \\ \@chairmantitle}
-\vfill
+% \signature{Accepted by}{\@chairmanname \\ \@chairmantitle}
+% \vfill
 \end{titlepage}}
 
 % this environment should probably be called abstract,

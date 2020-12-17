@@ -1,6 +1,6 @@
 \chapter{Scene Graphs}
 
-\section{Mathematical Description}
+\subsection{Mathematical Description}
 
 We model the geometric state of a scene at a single time point as a \emph{scene graph}, which is a tuple $(G, \Theta, Z)$, where $G = (V, E)$ is a directed tree that encodes the scene graph \emph{structure} and $\Theta$ encodes the scene graph \emph{continuous parameters} and $Z$ encodes the scene graph \emph{discrete parameters}.
 Although the framework we present can represent articulated objects, in this paper we only consider scenes involving a set of rigid objects $O$.
@@ -70,6 +70,60 @@ The prior distribution on edge parameters is:
     \cdot \frac{1}{2 \pi}
 \end{equation}
 (where $p_{\mathrm{norm}}$ and $p_{\mathrm{exp}}$ are the normal and exponential distribution density functions, respectively).
+
+\subsection{Probabilistic Dynamics on Scene Graphs}
+
+We build temporal models of scene geometry based on Markov chains of scene graphs $\{(G_t, \Theta_t, Z_t)\}_{t=1}^T$, where $t$ indexes time, with transitions $p(G_t, \Theta_t, Z_t | G_{t-1}, \Theta_{t-1}, Z_{t-1})$.
+We factor the dynamics model on scene graphs decomposes into a dynamics model on scene graph structure, and a dynamics on parameters:
+\begin{align}
+    p(G_t, \Theta_t, Z_t | G_{t-1}, \Theta_{t-1}, Z_{t-1}) :=
+        p(G_t | G_{t-1})
+        \cdot p(Z_t, \Theta_t, | Z_{t-1}, \Theta_{t-1}, G_{t-1}, G_t)
+\end{align}
+The dynamics on graph structure is based on a mixture of a random walk on structures (to capture incremental changes to the structure of a scene that often occur) and a uniform distribution on structures (to model sudden unexpected changes in structure):
+\begin{equation}
+    p(G_t | G_{t-1}) :=  0.9 \cdot p_{\mathrm{walk}}(G_t | G_{t-1}) + 0.1 \cdot p_{\mathrm{unif}(|O|)}(G_t)
+\end{equation}
+where $p_{\mathrm{walk}}(G' | G)$ is the distribution on graph structures induced by a sampling process in which one vertex in the undirected spanning tree is selected at random, severed from the tree, and grafted back onto the graph at a uniformly chosen vertex, subject to the condition that the resulting graph is a spanning tree.
+% TODO show a graphic of this..
+Recall that since the tree contains the root node $r$, this process can change the edge type $(u, v_j)$ for an object $i$ from $(r, v_j)$ (representing independent 6DoF pose) to $(v_i, v_j)$ (representing flush contact pose with another object $v_i$.
+The dynamics on parameters factor according to edges in the graph:
+\begin{equation}
+    p(Z_t, \Theta_t | Z_{t-1}, \Theta_{t-1}, G_{t-1}, G_t) := \prod_{e \in E} p_e(z_e, \theta_e | G_t, G_{t-1}, {z_{t-1}}_e, {\theta_{t-1}}_e)
+\end{equation}
+If an edge $e$ is present in both $G_t$ and $G_{t-1}$, then this distribution is a mixture of a random walk and a uniform distribution.
+If an edge $e$ in $G_t$ was not present in $G_{t-1}$, then this distribution is a uniform distribution.
+
+%%%% begin sampling notation  - to go in an floating algorithm gbox showing probabilistic pseudocode 
+\begin{algorithm}[ht]
+\lstset{language=julia}
+\lstset{style=Gen}
+\begin{lstlisting}{julia}
+@gen function step_forward(
+    t::Int,
+    prev_scene_graph::Union{MetaDiGraph,Nothing},
+    hypers::Hypers,
+)
+    # structure and parameter dynamics
+    if t == 1
+        structure ~ UniformDiForest(N)
+        params ~ params_init(structure)
+    else
+        prev_structure = get_structure(prev_scene_graph)
+        structure ~ Mixture(...)
+        params ~ params_dynamics(structure, prev_scene_graph, hypers)
+
+    end
+
+    # observation
+    scene_graph = SceneGraph(structure, params)
+    obs ~ noise_model(scene_graph)
+
+    return scene_graph
+end
+\end{lstlisting}
+\caption{Probabilistic pseudocode for generative model}
+\end{algorithm}
 
 \section{Example Applications of Scene Graph Models}
 

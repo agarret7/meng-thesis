@@ -1,0 +1,76 @@
+%!TEX root = ./main.tex
+
+\lstdefinestyle{Gen}{
+  basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible,
+  keepspaces=true,
+  %upquote=true,
+  % Define . and % and @ as letters to include them in keywords.
+  alsoletter={\.,\%,\#, \@, \?, \/, \!},
+  % First type of keywords (Julia keywords)
+  morekeywords=[1]{function, if, else, elseif, end, for, begin, in, const, struct, using, return, const},
+  keywordstyle=[1]\textcolor{Sepia},
+  % Second type of keywords (Gen keywords)
+  morekeywords=[2]{\@static, \@gen, \@inj, \@trace, \@param, \@input, \@output,
+                   \@tf_function, \@call, \@read, \@tf_call, \@copy,
+                   \@splice, \@write,\@choicediff,\@diff,\@ad,\@tensorflow_function},
+  keywordstyle=[2]\textcolor{DarkBlue},
+  % Second type of keywords (Gen API)
+  morekeywords=[3]{initialize, generate, choicemap, map_optimize, importance_resampling, select, mala, mh, metropolis_hastings, update, propose, assess, custom_importance, train_batched!, TFFunction},
+  keywordstyle=[3]\bfseries,
+  % Third type of keywords (random choices)
+  morekeywords=[4]{normal,bernoulli,gamma,uniform,beta,independent_pixel_noise},
+  keywordstyle=[4]\textcolor{DarkGreen},
+  % Add strings
+  showstringspaces=False,
+  %stringstyle=\ttfamily\color{NavyBlue},
+  %stringstyle=\ttfamily\color{Purple},
+  %morestring=[b]{"},
+  %morestring=[b]{'},
+  % l is for line comment
+  morecomment=[l]{\#},
+  commentstyle=\color{darkgray}\ttfamily,
+  escapeinside={<@}{@>},
+  % line numbers
+  numbers=left,
+  numberstyle=\tiny\color{darkgray},
+  numbersep=3pt
+}
+
+\lstdefinestyle{Assignment}{
+  basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible,
+  keepspaces=true,
+  %upquote=true,
+  % Define . and % and @ as letters to include them in keywords.
+  alsoletter={\.,\%,\#, \@, \?, \/},
+  % First type of keywords (Julia keywords)
+  morekeywords=[1]{function, if, else, end, for, begin, in, const, struct, using, return, const},
+  keywordstyle=[1]\textcolor{Sepia},
+  % Second type of keywords (Gen keywords)
+  morekeywords=[2]{\@gen, \@inj, \@trace, \@param, \@input, \@output,
+                   \@tf_function, \@call, \@read, \@tf_call, \@copy,
+                   \@splice, \@write},
+  keywordstyle=[2]\textcolor{DarkBlue},
+  % Second type of keywords (Gen API)
+  morekeywords=[3]{generate, choicemap, map_optimize, metropolis_hastings, select},
+  keywordstyle=[3]\bfseries,
+  % Third type of keywords (random choices)
+  morekeywords=[4]{normal,bernoulli},
+  keywordstyle=[4]\textcolor{DarkGreen},
+  % Add strings
+  showstringspaces=False,
+  %stringstyle=\ttfamily\color{NavyBlue},
+  %stringstyle=\ttfamily\color{Purple},
+  %morestring=[b]{"},
+  %morestring=[b]{'},
+  % l is for line comment
+  morecomment=[l]{\#},
+  commentstyle=\color{darkgray}\ttfamily,
+  escapeinside={<@}{@>}
+}
+
+\newcommand{\addr}[1]{\textcolor{DarkOrchid}{#1}}
+\newcommand{\diff}[1]{\textcolor{Brown}{#1}}
+\newcommand{\dist}[1]{\textcolor{DarkGreen}{#1}}
+\newcommand{\infr}[1]{\textcolor{Purple}{#1}}

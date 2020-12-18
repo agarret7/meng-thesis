@@ -95,35 +95,95 @@ If an edge $e$ is present in both $G_t$ and $G_{t-1}$, then this distribution is
 If an edge $e$ in $G_t$ was not present in $G_{t-1}$, then this distribution is a uniform distribution.
 
 %%%% begin sampling notation  - to go in an floating algorithm gbox showing probabilistic pseudocode 
-\begin{algorithm}[ht]
 \lstset{language=julia}
 \lstset{style=Gen}
-\begin{lstlisting}{julia}
-@gen function step_forward(
-    t::Int,
-    prev_scene_graph::Union{MetaDiGraph,Nothing},
-    hypers::Hypers,
-)
-    # structure and parameter dynamics
-    if t == 1
-        structure ~ UniformDiForest(N)
-        params ~ params_init(structure)
-    else
-        prev_structure = get_structure(prev_scene_graph)
-        structure ~ Mixture(...)
-        params ~ params_dynamics(structure, prev_scene_graph, hypers)
 
+\begin{figure}[p]
+\centering
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+@gen function model(T::Int)
+    latent_gs = []
+    for t = 1:T
+        # structure and parameter dynamics
+        if t == 1
+            structure ~ UniformDiForest(N)
+            params ~ params_init(structure)
+        else
+            (prev_structure, prev_params) = decompose(gs[t-1])
+            structure ~ StructureTransition(prev_structure)
+            params ~ params_dynamics(structure, prev_params)
+        end
+
+        # observation
+        latent_g = SceneGraph(structure, params)
+        obs ~ noise_model(latent_g)
+        push!(latent_gs, latent_g)
     end
-
-    # observation
-    scene_graph = SceneGraph(structure, params)
-    obs ~ noise_model(scene_graph)
-
-    return scene_graph
+    return latent_gs
 end
 \end{lstlisting}
-\caption{Probabilistic pseudocode for generative model}
-\end{algorithm}
+\subcaption{Top-level scene graph model}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+@gen function init_params(structure::SimpleDiGraph)
+    params = []
+    for i in vertices(structure)
+        if isFloating(structure, i)
+            xs = {i} ~ init_floating_pose()
+        else
+            xs = {i} ~ init_sliding_pose(parent(structure, i))
+        end
+        push!(params, xs)
+    end
+    return params
+end
+\end{lstlisting}
+\subcaption{Parameter initialization}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+@gen function params_dynamics(structure, prev_params, hypers)
+    new_params = []
+    for i in vertices(structure)
+        if isFloating(structure, i)
+            new_xs = {i} ~ floating_pose_dynamics(prev_params[i])
+        else
+            new_xs = {i} ~ sliding_pose_dynamics(prev_params[i], parent(structure, i))
+        end
+        push!(new_params, new_xs)
+    end
+    return new_params
+end
+\end{lstlisting}
+\subcaption{Parameter dynamics}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+RobustNoisyPoseLikelihood = Mixture([GaussianVMF, UniformPose])
+
+@gen function noise_model(g)
+    # use Mixture to construct a mixture of uniform and gaussian vmf with prob_outlier of being uniform
+    observed_poses = []
+    for i in vertices(g)
+        latent_pose = get_floating_pose(g, i)  # get 6DoF pose for object i
+        observed_pose = {i} ~ RobustNoisyPoseLikelihood([1 - p_outlier, p_outlier],
+                                                        [(latent_pose, inlier_pos_stdev, inlier_rot_conc),
+                                                        (outlier_bounds,)])
+        push!(observed_poses, observed_pose)
+    end
+    return observed_poses
+end
+\end{lstlisting}
+\subcaption{Noisy observational model}
+\end{subfigure}
+
+\caption{Probabilistic pseudocode for an example dynamic scene graph model}
+\end{figure}
 
 \section{Example Applications of Scene Graph Models}
 

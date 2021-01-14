@@ -1,7 +1,6 @@
 \chapter{Scene Graphs}
 
-\subsection{Mathematical Description}
-
+\section{Mathematical Description}
 We model the geometric state of a scene at a single time point as a \emph{scene graph}, which is a tuple $(G, \Theta, Z)$, where $G = (V, E)$ is a directed tree that encodes the scene graph \emph{structure} and $\Theta$ encodes the scene graph \emph{continuous parameters} and $Z$ encodes the scene graph \emph{discrete parameters}.
 Although the framework we present can represent articulated objects, in this paper we only consider scenes involving a set of rigid objects $O$.
 The scene graph structure includes a vertex $v_o \in V$ for each object $o \in O$ that represents the 6DoF pose of object $o$, as well as a vertex $r \in V$ that represents the the coordinate frame of the observer.
@@ -11,12 +10,12 @@ A directed edge $e = (r, v_j) \in E$ from the root to an object $j \in O$ encode
 The continuous and discrete parameters of the scene graph consist of the parameters for each edge in the structure ($\Theta := \{\theta_e\}_{e \in E}$ and $Z := \{z_e\}_{e \in E}$).
 The set of edges $E$ must \emph{span} the set of vertices $V := \{r\} \cup \{v_o\}_{o \in O}$; that is the scene graph structure $G$ is a \emph{directed spanning tree}.
 
-\subsection{Computing the 6DoF poses of all objects in the scene}
-Given a scene graph $(G, \Theta, Z)$ the pose $x_i \in SE(3)$ of an object $i$ relative to the observer coordinate frame can be computed by walking path in the tree $G$ from the root vertex $r \in V$ to the vertex $v_i \in V$, and successively computing the pose of each object along the path from the pose of its parent.
-That is, given pose $x_u \in SE(3)$ and edge $(u, v) \in E$, the pose $x_v \in SE(3)$ is computed as $x_v := x_v \cdot \Delta x(z_e, \theta_e)$ where $\Delta x(z_e, \theta_e) \in SE(3)$ is the relative pose between vertex $u$ and vertex $v$.
+\subsection{Computing the 6DoF poses of all objects in the scene} \label{6dofCalculation}
+Given a scene graph $(G, \Theta, Z)$ the pose $x_i \in SE(3)$ of an object $i \in O$ relative to the observer coordinate frame can be computed by walking path in the tree $G$ from the root vertex $r \in V$ to the vertex $v_i \in V$, and successively computing the pose of each object along the path from the pose of its parent (the set of all such poses is $X := \{x_i\}_{i \in O}$.
+That is, given pose $x_u \in SE(3)$ and edge $(u, v) \in E$, the pose $x_v \in SE(3)$ is computed as $x_v := x_u \cdot \Delta x(z_e, \theta_e)$ where $\Delta x(z_e, \theta_e) \in SE(3)$ is the relative pose between vertex $u$ and vertex $v$.
 For an edge from the root vertex to an object vertex ($e = (r, v_i)$), $x_u := \mathbf{1}$ (the identity element of $SE(3)$) and $\Delta x(z_e, \theta_e) = \theta_e \in SE(3)$ (note that there are no discrete parameters in this case, so $z_e := ()$).
 The functional form of $\Delta x(z_e, \theta_e)$ for an edge $e$ between two objects is discussed below.
-One requirement is that $\Delta x(z_e, \theta_e)$ is a differentiable function of $\theta_e$; this enables inference algorithm that exploit gradient information.
+While not necessary for the algorithms we explore in this document, we ensure $\Delta x(z_e, \theta_e)$ is a differentiable function of $\theta_e$; this can be used to exploit gradient information in inference programs.
 
 \subsection{Modeling face-to-face contact between two objects}
 An edge $(v_i, v_j) \in E$ from object $i$ to object $j$ indicates that the pose of object $j$ is represented relative to the pose of object $i$.
@@ -72,7 +71,6 @@ The prior distribution on edge parameters is:
 (where $p_{\mathrm{norm}}$ and $p_{\mathrm{exp}}$ are the normal and exponential distribution density functions, respectively).
 
 \subsection{Probabilistic Dynamics on Scene Graphs}
-
 We build temporal models of scene geometry based on Markov chains of scene graphs $\{(G_t, \Theta_t, Z_t)\}_{t=1}^T$, where $t$ indexes time, with transitions $p(G_t, \Theta_t, Z_t | G_{t-1}, \Theta_{t-1}, Z_{t-1})$.
 We factor the dynamics model on scene graphs decomposes into a dynamics model on scene graph structure, and a dynamics on parameters:
 \begin{align}
@@ -93,6 +91,64 @@ The dynamics on parameters factor according to edges in the graph:
 \end{equation}
 If an edge $e$ is present in both $G_t$ and $G_{t-1}$, then this distribution is a mixture of a random walk and a uniform distribution.
 If an edge $e$ in $G_t$ was not present in $G_{t-1}$, then this distribution is a uniform distribution.
+
+\subsection{Robust Pose Likelihood for Modeling Noisy Neural Detections}
+In order to model noisy neural network detections for each object $o \in O$, we introduce a likelihood over observed object pose detections $Y := \{y_o\}_{o \in O} = \{(y_o^\mathrm{pos}, y_o^\mathrm{rot})\}_{o \in O}$.
+The likelihood consists of two components in a mixture model:
+(i) a uniform distribution over a finite cuboid region in 3D space, and
+(ii) a product of a diagonal multivariate Gaussian over object positions, and a von Mises--Fisher distribution over rotations, represented as unit vectors in $S^3$ (quaternions).
+The first component represents the possibility of outlier neural ``flicker'', where objects may be properly recognized as being in the scene, but are very poorly localized.
+The second component represents where the inlier cases where the neural detector roughly captures the correct location of the object in the scene, with small local inaccuracies.
+\begin{equation} \label{eq:noisy-pose-likelihood}
+  p(Y | X, \sigma, \kappa) =
+  \prod_{o \in O}
+    \left(\alpha \cdot \frac{1}{LWH} +
+    (1 - \alpha) \cdot \mathcal{N}\left(y_o^\mathrm{pos}; x_o^\mathrm{pos}, \sigma\right) \cdot
+    \mathrm{VMF}(y_o^\mathrm{rot}; x_o^\mathrm{rot}, \kappa)\right)
+\end{equation}
+
+
+\subsection{Reversible Jump MCMC for Structure Inference}
+When considering how to infer the posterior distribution over scene graph structure $G$, we might take inspiration from our graph random walk distribution $p_\mathrm{walk}(G_t|G_{t_1})$ to build an incremental graph modification kernel that proposes small changes to the structure.
+However, when changing an edge type from $e \to e'$, we also induce a new set of parameters $\theta_{e'}$ that must be simultaneously proposed or resimulated.
+Ultimately these two parameterizations are just different ways to express identical absolute poses $x_j = x'_j$, as either relative to another object, or to the observer coordinate frame.
+
+Reversible jump MCMC (RJMCMC) is a generalization of the MH algorithm that allows moves between models with different state spaces, while reusing information in the different model latents to accelerate inference.
+We provide the formulation of RJMCMC here without proof of asymptotic correctness; for a full derivation see Green et. al~\cite{green2009reversible}.
+Define a set of models $k \in \mathcal{K}$, each with latent variables $\theta_k \in \R^{N_k}$ and joint density $p_k(k,\theta_k,\mathcal{D})$, as well as a set of reversible jump moves $m \in \mathcal{M}$, each of which switches between two models $k,k' \in \mathcal{K}$.
+For each model, we have a distribution over possible moves $q_k(m)$ with support over a subset of $\mathcal{M}$.
+Each reversible jump move from $k \to k'$ proposes a value for $\theta_{k'}$ given $\theta_{k}$, using a differentiable bijection $f$.
+However, in general $N_{k} \neq N_{k'}$, which prevents us from making a bijection between these two spaces.
+To ameliorate this, we pad the latent spaces of both models with additional auxiliary randomness.
+In the forward direction ($k \to k'$), we sample $u \sample q(\cdot)$ where $u \in \R^{D_{k}}$, and in the backward direction ($k' \to k$), we sample $u \sample q'(\cdot)$ where $u \in \R^{D_{k'}}$; we additionally require $N_{k} + D_{k} = N_{k'} + D_{k'}$ such that we can define a bijection between our two extended spaces.
+We then let the bijection be between these two extended state spaces; the forward move then proposes new values $(\theta_{k'}, u') = f(\theta_{k}, u)$, which we accept with probability $\min\{1,\alpha\}$, where
+\begin{equation}
+  \alpha = \frac{p_{k'}(k',\theta_{k'},\mathcal{D})q(u)q_{k'}(m)}{p_{k}(k,\theta_{k},\mathcal{D})q'(u')q_k(m)} \cdot \abs{\det J_f}
+\end{equation}
+
+Because our different parameterizations ultimately represent the same absolute poses, RJMCMC offers a way to reuse our inferred continuous parameters $\theta_e$ to efficiently propose values for $\theta_{e'}$.
+Explicitly, we define a class of reversible jump moves parameterized by $j \in V$ that determines which node will have a new parent proposed.
+If $j$ is floating in $G = (V,E)$, then the models reachable have structure $(V, E \setminus \{(r,j)\} \cup \{(i,j)\})$, and discrete parameter $z_{(i,j)} = (f_i, f_j)$.
+The corresponding moves are sampled from the distribution $m_\mathrm{sliding} = (i, f_i, f_j) \sample q_\mathrm{floating}(\cdot, \cdot, \cdot)$.
+Inversely, if $j$ is sliding, then the only model reachable has structure $(V, E \setminus \{(i,j)\} \cup \{(r,j)\})$.
+We call the move corresponding to this $m_\mathrm{floating}$, and $q_\mathrm{sliding}(m_\mathrm{floating}) = 1$.
+The slack terms mean both floating and sliding continuous parameters have 6DoF, thereby precluding the need for sampling auxiliary continuous random variables; this is the main motivation for explicitly modeling a slack term.
+
+The final component are the bijections.
+All sliding to floating moves have the bijection $f_{m_\mathrm{floating}}(G, \Theta, Z) = (G', \Theta', Z')$, where $E' = E \setminus \{(i,j)\} \cup \{(r,j)\})$, $z'_{(i,j)} = ()$, and $\theta_{(i,j)}$ is calculated using the method described in section~\ref{6dofCalculation}.
+All floating to sliding moves inversely have the bijection $f_{(i, f_i, f_j)}(G', \Theta', Z') = (G, \Theta, Z)$, where $E = E' \setminus \{(r,j)\} \cup \{(i,j)\})$, $z'_{(i,j)} = (f_i, f_j)$, and $\theta_{(i,j)}$ is calculated as the sliding continuous parameters given contacting faces $f_i, f_j$ and parent pose $x_i$, such that the absolute pose $x'_j = x_j$.
+
+The position parameterizations in the floating and sliding cases are both $\R^3$, and thus the Jacobian correction is simply $1$ for these subspaces.
+Orientations are slightly more complex; in the floating case, the orientation is represented as a unit vector in $S^3$ (which has a double-covering surjective homomorphism to the rotation group SO(3)).
+In the sliding case, the orientation is represented as the Hopf fibration, which has local product structure $S^2 \times S^1$.
+This local topology means our Jacobian correction for the transformation between these spaces is constant.
+\todo[Ask Marco how he got the Jacobian correction]
+\begin{equation}
+  \abs{\det J_{f_{m_\mathrm{sliding}}}} = \abs{\det J_{f_{m_\mathrm{floating}}}}^{-1} = 4
+\end{equation}
+
+Gen automatically calculates the acceptance ratio for RJMCMC and makes appropriate MH moves, given the involutions and associated Jacobian corrections.
+
 
 %%%% begin sampling notation  - to go in an floating algorithm gbox showing probabilistic pseudocode 
 \lstset{language=julia}

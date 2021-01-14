@@ -2,7 +2,6 @@
 
 
 \section{Desiderata}
-
 Before we're able to implement our possible scene graph models, 
 Visualizing the richly structured geometric information contained in a generative scene graph model is vital for proper debugging and analysis of modeling and inference programs.
 The most basic requirement is visualizing the components of our scene graph representation $(G, \Theta, Z)$.
@@ -17,9 +16,7 @@ Within this class of scenes, common characterizing features are the mean and unc
 
 
 \section{Examples}
-
 \subsection{Visualizing a Single Scene Graph}
-
 \begin{figure}[t]
   \centering
   \includegraphics[scale=0.35]{overlaidSceneGraph}
@@ -34,13 +31,12 @@ Figure~\ref{fig:overlaidSceneGraphs} demonstrates using this function to see a s
 For each object $o \in O$ in the scene graph, the function renders a colored wireframe bounding box with the dimensions of $o$, and 6DoF pose given by $x_o$.
 Importantly, this is the \textit{absolute} pose of the object, including any slack in relative contacts.
 Thus, the continuous parameters $\Theta := \{\theta_e\}_{e \in E}$ are not explicitly used in rendering, but can be distinguished in contacting objects $i,j \in O$ by the distance in their corresponding wireframe renderings.
-Contact edges $e \in E$ are visualized as white squares, located at the center of face $F_i$.
-Face $F_j$ is not directly visualized, but can often be inferred from which face is closest to $F_i$.
+Contact edges $e \in E$ are visualized as white squares, located at the center of face $f_i$.
+Face $f_j$ is not directly visualized, but can often be inferred from which face is closest to $f_i$.
 This does not preclude potential ambiguity for certain pathological slack terms that rotate $i$ close to a multiple of $\pi/2$.
 However, in practical modeling applications we find such occurrences to be rare, as sensible priors weight heavily against large slack terms.
 
 \subsection{Distributions over Structure Beliefs}
-
 \begin{figure}[t]
   \centering
   \includegraphics[scale=0.125]{structureDistribution}
@@ -59,7 +55,6 @@ In Figure~\ref{fig:structureDistribution}, we can see how this clearly represent
 This tool can be combined with the wireframe overlay to give rich visualizations of distributions over scene graphs.
 
 \subsection{Distributions over Scene Beliefs}
-
 \begin{figure}[H]
   \begin{subfigure}[b]{\textwidth}
     \centering
@@ -124,7 +119,6 @@ In contrast to the Figure~\ref{fig:multipleBeliefsMiddle}, this method clearly s
 \end{figure}
 
 \subsection{Visualizing Inference in a Particle Filter}
-
 Finally, we demonstrate a real-world application by showing the actual usage of these visualization utilities in a particle filter with a corresponding complex inference program.
 The scene graph model we used leverages the prior from \todo[cite prior scene graph model section] and dynamics from \todo[cite scene graph model dynamics].
 Object poses are initialized to their observed neural detections in the first time step.

@@ -15,7 +15,7 @@ Given a scene graph $(G, \Theta, Z)$ the pose $x_i \in SE(3)$ of an object $i \i
 That is, given pose $x_u \in SE(3)$ and edge $(u, v) \in E$, the pose $x_v \in SE(3)$ is computed as $x_v := x_u \cdot \Delta x(z_e, \theta_e)$ where $\Delta x(z_e, \theta_e) \in SE(3)$ is the relative pose between vertex $u$ and vertex $v$.
 For an edge from the root vertex to an object vertex ($e = (r, v_i)$), $x_u := \mathbf{1}$ (the identity element of $SE(3)$) and $\Delta x(z_e, \theta_e) = \theta_e \in SE(3)$ (note that there are no discrete parameters in this case, so $z_e := ()$).
 The functional form of $\Delta x(z_e, \theta_e)$ for an edge $e$ between two objects is discussed below.
-While not necessary for the algorithms we explore in this document, we ensure $\Delta x(z_e, \theta_e)$ is a differentiable function of $\theta_e$; this can be used to exploit gradient information in inference programs.
+One requirement is that $\Delta x(z_e, \theta_e)$ is a differentiable function of $\theta_e$; this enables inference algorithm that exploit gradient information.
 
 \subsection{Modeling face-to-face contact between two objects}
 An edge $(v_i, v_j) \in E$ from object $i$ to object $j$ indicates that the pose of object $j$ is represented relative to the pose of object $i$.
@@ -42,7 +42,6 @@ While uncertainty about the number of objects is possible to represent in our fr
 Therefore, $p(G)$ reduces to a prior distribution on edges in the scene graph.
 For the prior distribution on structure, we use a uniform distribution on directed trees that are rooted at vertex $r$ and span all $|O| + 1$ vertices in the graph.
 This set of directed trees is isomorphic to the set of undirected spanning trees over $|O| + 1$ vertices.
-%We use a uniform distribution over forests of fixed size $N$. The structure of a forest of $N$ nodes is isomorphic to that of a spanning tree with $N+1$ nodes, where edges between the additional node and its children in the spanning tree are simply deleted.
 Therefore, the prior probability of a graph $G = (V, E)$ is obtained by using Cayley's formula to count the number of undirected spanning trees on $|O| +1$ vertices:
 \begin{equation}
     p(G) := p_{\mathrm{unif}(|O|)}(G) := \left\{
@@ -71,6 +70,18 @@ The prior distribution on edge parameters is:
 (where $p_{\mathrm{norm}}$ and $p_{\mathrm{exp}}$ are the normal and exponential distribution density functions, respectively).
 
 \subsection{Probabilistic Dynamics on Scene Graphs}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{sceneGraphStructureTransition}
+  \caption{
+    Our random walk transition model on the structure of scene graphs modifies the spanning tree that defines the scene graph structure.
+    Left: A transition from structure $G'$ to $G$ that makes $o_5$ a child of the root $r$ instead of object $o_3$.
+    In $G$, parametrization of the pose of $o_5$ was previously parametrized relative to the pose of object $o_3$; in $G'$ it is parametrized independently of the pose of the other objects.
+    Right: The transition on structures is reversible, and the reverse transition is unique.
+    This allows us to use the transition model on structure as the basis of reversible jump MCMC moves on structure, as well within the dynamics model on structure.
+  }
+  \label{fig:sceneGraphS}
+\end{figure}
 We build temporal models of scene geometry based on Markov chains of scene graphs $\{(G_t, \Theta_t, Z_t)\}_{t=1}^T$, where $t$ indexes time, with transitions $p(G_t, \Theta_t, Z_t | G_{t-1}, \Theta_{t-1}, Z_{t-1})$.
 We factor the dynamics model on scene graphs decomposes into a dynamics model on scene graph structure, and a dynamics on parameters:
 \begin{align}
@@ -82,8 +93,8 @@ The dynamics on graph structure is based on a mixture of a random walk on struct
 \begin{equation}
     p(G_t | G_{t-1}) :=  0.9 \cdot p_{\mathrm{walk}}(G_t | G_{t-1}) + 0.1 \cdot p_{\mathrm{unif}(|O|)}(G_t)
 \end{equation}
-where $p_{\mathrm{walk}}(G' | G)$ is the distribution on graph structures induced by a sampling process in which one vertex in the undirected spanning tree is selected at random, severed from the tree, and grafted back onto the graph at a uniformly chosen vertex, subject to the condition that the resulting graph is a spanning tree.
-% TODO show a graphic of this..
+where $p_{\mathrm{walk}}(G' | G)$ is the distribution on graph structures induced by a sampling process in which one vertex in the undirected spanning tree is selected at random, severed from the tree, and grafted back onto the graph at a uniformly chosen vertex, subject to the condition that the resulting graph is a spanning tree;
+Figure~\ref{fig:sceneGraphStructureTransition} shows an example of this process.
 Recall that since the tree contains the root node $r$, this process can change the edge type $(u, v_j)$ for an object $i$ from $(r, v_j)$ (representing independent 6DoF pose) to $(v_i, v_j)$ (representing flush contact pose with another object $v_i$.
 The dynamics on parameters factor according to edges in the graph:
 \begin{equation}
@@ -92,8 +103,22 @@ The dynamics on parameters factor according to edges in the graph:
 If an edge $e$ is present in both $G_t$ and $G_{t-1}$, then this distribution is a mixture of a random walk and a uniform distribution.
 If an edge $e$ in $G_t$ was not present in $G_{t-1}$, then this distribution is a uniform distribution.
 
-\subsection{Robust Pose Likelihood for Modeling Noisy Neural Detections}
-In order to model noisy neural network detections for each object $o \in O$, we introduce a likelihood over observed object pose detections $Y := \{y_o\}_{o \in O} = \{(y_o^\mathrm{pos}, y_o^\mathrm{rot})\}_{o \in O}$.
+\subsection{Robust Pose Likelihood for Modeling Noisy Object Detections}
+\begin{figure}[H]
+  \includegraphics[width=\columnwidth]{neuralModeling}
+  \caption{
+    Abstract representation of our scene graph model; image data is parsed into noisy unstructured neural detections, which are modeled as observations of an underlying structured scene graph.
+  }
+  \label{fig:neuralModeling}
+\end{figure}
+Our model differs from previous inverse graphics work in an important way; while most inverse graphics pipelines create a full generative model all the way to pixel-level data, we instead model the output of a bottom-up feature detector that estimates the poses of objects from visual data.
+This was specifically motivated by the desire to leverage the power of existing deep learning approaches to object detection, and integrate them with a Bayesian approach.
+Figure~\ref{fig:neuralModeling} shows the abstract pipeline for our model.
+Our generative model is thus grounded in attempting to explain the output of a noisy detector, which requires us to accurately predict the presence and distribution of ``outlier'' detections.
+In practice, the failure modes of deep neural networks are complex and varied, and can depend on a huge range of factors, including occlusion, lighting condition, the presence of novel objects, etc.
+We provide a simple first-pass likelihood model for representing noisy bottom-up detectors, and note that developing more accurate likelihoods for either noisy bottom-up detectors, or directly rendered visual data, is an important next step.
+
+We introduce a likelihood over observed object pose detections $Y := \{y_o\}_{o \in O} = \{(y_o^\mathrm{pos}, y_o^\mathrm{rot})\}_{o \in O}$.
 The likelihood consists of two components in a mixture model:
 (i) a uniform distribution over a finite cuboid region in 3D space, and
 (ii) a product of a diagonal multivariate Gaussian over object positions, and a von Mises--Fisher distribution over rotations, represented as unit vectors in $S^3$ (quaternions).
@@ -102,8 +127,8 @@ The second component represents where the inlier cases where the neural detector
 \begin{equation} \label{eq:noisy-pose-likelihood}
   p(Y | X, \sigma, \kappa) =
   \prod_{o \in O}
-    \left(\alpha \cdot \frac{1}{LWH} +
-    (1 - \alpha) \cdot \mathcal{N}\left(y_o^\mathrm{pos}; x_o^\mathrm{pos}, \sigma\right) \cdot
+    \left(p_\mathrm{outlier} \cdot \frac{1}{LWH} +
+    (1 - p_\mathrm{outlier}) \cdot \mathcal{N}\left(y_o^\mathrm{pos}; x_o^\mathrm{pos}, \sigma\right) \cdot
     \mathrm{VMF}(y_o^\mathrm{rot}; x_o^\mathrm{rot}, \kappa)\right)
 \end{equation}
 
@@ -115,6 +140,8 @@ Ultimately these two parameterizations are just different ways to express identi
 
 Reversible jump MCMC (RJMCMC) is a generalization of the MH algorithm that allows moves between models with different state spaces, while reusing information in the different model latents to accelerate inference.
 We provide the formulation of RJMCMC here without proof of asymptotic correctness; for a full derivation see Green et. al~\cite{green2009reversible}.
+We define moves over a projection of the scene graph model to the static case; the dynamic case can easily be extended with an additional parameter for time.
+
 Define a set of models $k \in \mathcal{K}$, each with latent variables $\theta_k \in \R^{N_k}$ and joint density $p_k(k,\theta_k,\mathcal{D})$, as well as a set of reversible jump moves $m \in \mathcal{M}$, each of which switches between two models $k,k' \in \mathcal{K}$.
 For each model, we have a distribution over possible moves $q_k(m)$ with support over a subset of $\mathcal{M}$.
 Each reversible jump move from $k \to k'$ proposes a value for $\theta_{k'}$ given $\theta_{k}$, using a differentiable bijection $f$.
@@ -149,12 +176,24 @@ This local topology means our Jacobian correction for the transformation between
 
 Gen automatically calculates the acceptance ratio for RJMCMC and makes appropriate MH moves, given the involutions and associated Jacobian corrections.
 
+\section{Representation as a Generative Program}
+We implement our scene graph model in the Gen probabilistic proramming system\footnote{\url{https://www.gen.dev}}~\cite{Cusumano-Towner:2019:GGP:3314221.3314642}.
+We leverage the dynamic DSL provided within Gen to implement the different modeling components as modular generative functions.
+Figure~\ref{fig:model} shows example code of a probabilistic program that implements our scene graph model.
 
-%%%% begin sampling notation  - to go in an floating algorithm gbox showing probabilistic pseudocode 
+Gen provides an abstract interface to automatically run user-specified programmable inference on a generative program using its built-in inference library.
+Among the algorithms provided, Gen provides utilities for running RJMCMC, by specifying a generative proposal function to generate auxiliary randomness, and an associated involution function that provides the associated Jacobian correction.
+Figure~\ref{fig:inference} shows an user-space implementation of these algorithmic components.\footnote{
+  We note that at the time of writing this document, Gen has added a DSL for involutive MCMC, which can automate the calculation of Jacobian corrections using differentiable programming, and provides convenience macros to further simplify the development of custom RJMCMC algorithms.
+  See documentation at \url{https://www.gen.dev/dev/ref/mcmc/\#Involutive-MCMC-1}
+}.
+
+% MODEL AND INFERENCE CODE FIGURE BEGIN
+
 \lstset{language=julia}
 \lstset{style=Gen}
 
-\begin{figure}[p]
+\begin{figure}[H]
 \centering
 \begin{subfigure}{\textwidth}
 \begin{lstlisting}
@@ -163,7 +202,7 @@ Gen automatically calculates the acceptance ratio for RJMCMC and makes appropria
     for t = 1:T
         # structure and parameter dynamics
         if t == 1
-            structure ~ UniformDiForest(N)
+            structure ~ UniformDirectedForest(N)
             params ~ params_init(structure)
         else
             (prev_structure, prev_params) = decompose(gs[t-1])
@@ -239,20 +278,175 @@ end
 \end{subfigure}
 
 \caption{Probabilistic pseudocode for an example dynamic scene graph model}
+\label{fig:model}
 \end{figure}
 
-\section{Example Applications of Scene Graph Models}
+\begin{figure}[H]
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+@gen function structure_move_randomness(prev_trace, i::Int)
+    prev_structure = get_structure(prev_trace)
+    floating_to_sliding_move = isFloating(prev_structure, i)
 
-\todo
+    if floating_to_sliding_move
+        prev_parent_node = ROOT_NODE_ID
 
-\subsection{YCB Objects on a synthetic tabletop}
+        # sample a new parent object from a categorical
+        probs = ones(N)
+        probs[i] = 0.0  # don't propose to make the object its own parent
+        new_parent_node_object ~ categorical(1:N, probs ./ sum(probs))
 
-\todo
+        # sample new faces from a categorical
+        box_faces = [:bottom, :top, :left, :right, :front, :back]
+        (parent_face_probs, child_face_probs) =
+            structure_move_face_distributions(prev_trace, i, parent_object)
+        parent_face ~ categorical(box_faces, parent_face_probs)
+        child_face ~ categorical(box_faces, child_face_probs)
+    else
+        prev_parent_node = parent(prev_structure, i)
+        new_parent_node = ROOT_NODE_ID
+    end
+    new_structure = replaceEdge(prev_structure, i, prev_parent_node, new_parent_node)
+    return (new_structure, floating_to_sliding_move)
+end
+\end{lstlisting}
+\subcaption{
+  Generative function for sampling auxiliary randomness.
+  In Gen, sampling the discrete move is combined with sampling continuous auxiliary randomness in a single function.
+}
+\end{subfigure}
 
-\subsection{Real YCB objects on a physical tabletop}
+\begin{subfigure}{\textwidth}
+\centering
+\begin{lstlisting}
+function structure_move_involution(
+    prev_trace,              # original sampled scene graph model
+    fwd_randomness_choices,  # choices (i, f_i, f_j) sampled from structure_move_randomness
+    fwd_randomness_ret,      # values returned from structure_move_randomness
+    fwd_randomness_args      # arguments passed to structure_move_randomness
+)
+    i, = fwd_randomness_args
+    (new_structure, floating_to_sliding_move) = fwd_randomness_ret
+    prev_scene_graph = get_latent_scene_graph(prev_trace)
 
-\todo
+    proposed_choices = choicemap()  # to set proposed reversible jump moves in the trace
+    bwd_choices = choicemap()       # to tell Gen which involution we're using in the backward direction
+    proposed_choices[:structure] = new_structure
 
-\subsection{Simulated objects in AI2Thor}
+    if floating_to_sliding_move
+        parent_object = fwd_randomness_choices[:parent_object]
+        parent_face = fwd_randomness_choices[:parent_face]
+        child_face = fwd_randomness_choices[:child_face]
+        sliding_choices =
+            get_equivalent_sliding_param(prev_scene_graph, parent_object, i, parent_face, child_face)
+        set_submap!(proposed_choices, :params => (:sliding, i), sliding_choices)
+        log_jacobian_correction = log(4)
+    else
+        prev_parent_object = parent(get_structure(prev_scene_graph), i)
+        (choices, prev_parent_face, prev_child_face) =
+            get_equivalent_floating_param(prev_scene_graph, prev_parent_object, i)
+        bwd_choices[:parent_object] = prev_parent_object
+        bwd_choices[:parent_face] = prev_parent_face
+        bwd_choices[:child_face] = prev_child_face
+        set_submap!(proposed_choices, :params => (:floating, i), cm)
+        log_jacobian_correction = -log(4)
+    end
 
-\todo
+    # update trace with proposed values
+    args = get_args(prev_trace)
+    argdiffs = map((_) -> NoChange(), args)
+    new_trace, weight, = update(prev_trace, args, argdiffs, proposed_choices)
+    weight += log_jacobian_correction
+    return (new_trace, bwd_choices, weight)
+end
+\end{lstlisting}
+\subcaption{Involution for reversible jump moves}
+\end{subfigure}
+
+\caption{Custom implementation of RJMCMC algorithm for structure inference}
+\label{fig:inference}
+\end{figure}
+
+% MODEL AND INFERENCE CODE FIGURE END
+
+\section{Example Application Domains of Scene Graphs}
+We present some example visual perception domains where scene graphs provide a useful abstraction for representing scene information.
+Our applications have thus far been applied with a specific orientation toward two main problems: inferring structured object relationships from unstructured poses of those objects, and robustly filtering object poses under failures in bottom-up visual perception.
+Our modeling choices were made with these goals in mind, so we focus on describing how these features are captured by our representation.
+In theory, we can extend these models to include even richer information about a scene, including dynamic physical properties of objects, or their functional (as opposed to geometric) relationships; we leave these and other applications for later work.
+
+\subsection{YCB Objects on a Synthetic Tabletop}
+\begin{figure}[h]
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.18]{ycbSynthetic1}
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.18]{ycbSynthetic2}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.18]{ycbSynthetic3}
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.18]{ycbSynthetic4}
+  \end{subfigure}
+  \caption{
+    Synthetic scenes generated using the GenSceneGraphs library in simulated dim light.
+    The colored wireframe bounding boxes represent objects in the scene graph, and the white boxes represent contact edges (see Chapter~\ref{chapter3} for more detail on how this visualization was produced).
+  }
+  \label{fig:syntheticYCBScene}
+\end{figure}
+
+Our scene graph abstraction is concretely implemented as a part of the GenSceneGraphs library.
+This library provides facilities for constructing and manipulating scene graphs composed of objects that can be rendered in a synthetic view.
+Figure~\ref{syntheticYCBScene} shows a variety of example scenes generated using this library; each visualized scene has an underlying scene graph representation that captures all relevant information.
+As such, these rendered scenes show an intuitive view of what our information our representation captures.
+
+
+\subsection{Real YCB Objects on a Physical Tabletop}
+\begin{figure}[H]
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.3]{ycbVideoGroundTruth}
+    \caption{
+      YCB-Video Ground Truth
+    }
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.3]{ycbVideoDope}
+    \caption{
+      YCB-Video nVidia DOPE
+    }
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.4]{inhouseGroundTruth}
+    \caption{
+      In-House Dataset
+    }
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[scale=0.4075]{inhouseDope}
+    \caption{
+      In-House Dataset nVidia DOPE
+    }
+  \end{subfigure}
+  \caption{
+    Example data from real-world scenes containing objects from the YCB dataset.
+    (a) and (c) show the underlying latent scene graph.
+    (b) and (d) show observed inaccurate pose estimates generated from the nVidia DOPE detector. (b) in particular demonstrates the types of catastrophic detection and localization errors that deep neural networks can exhibit.
+  }
+  \label{fig:realWorldSceneGraphs}
+\end{figure}
+
+Our scene graph representation can be used to represent information about real-world scenes as well.
+Figure~\ref{fig:realWorldSceneGraphs} shows how scene graphs can represent the underlying poses and geometric relationships between objects in the real world.
+In contrast to the synthetic scenes, the real world contains a much larger variety and range of extraneous variables, that inject noise into visual perception systems and make inference more difficult.
+Deep neural networks have shown incredibly promise in real-world object perception.
+However, neural networks struggle with robustness and generalization, and the presence of occluders, or even unfamiliar objects, can cause them to fail, as Figure~\ref{fig:realWorldSceneGraphs} also shows.
+Our scene graph model was designed with the goal of filtering noisy visual perception systems, and enhancing them with structured information, by inferring the underlying scene graph representation from a set of noisy bottom-up detections.

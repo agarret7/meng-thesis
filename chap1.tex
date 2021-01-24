@@ -1,12 +1,29 @@
 \chapter{Introduction}
+The development of modern probabilistic programming systems has enabled a deeper exploration of generative modeling and probabilistic inference procedures.
+Among the applications of these systems, are Bayesian approaches to 3D scene perception and physical reasoning, which have become increasingly common over the last few years~\cite{battaglia2013simulation, izatt2020generative, jampani2015informed, kulkarni2015picture, mansinghka2013approximate, wu2017learning, wu2017neural, romaszko2017vision}.
+This has led to a growing need for modeling and inference components defined over abstract scene representations.
 
-\section{Testing scene graph models}
+Scene graphs have recently emerged as a proposed unifying representation for 3D scenes, that allows for structured constraints on the relative geometric poses of objects~\cite{bzinberg2020scenegraphs, raboh2020differentiable, johnson2018image}.
+However, with the introduction of this new approach, comes the introduction of several challenges to the practical implementation of scene graph models.
+Among these challenges are: human-editable specification, visualization, priors, structure inference, hyperparameters tuning, and benchmarking.
+This thesis describes the development of engineering infrastructure aimed at addressing these challenges, to enable robust exploration of scene graph modeling and inference in a principled way.
 
-\subsection{History of Inverse Graphics}
+\pagebreak
 
-\subsection{Scene Graphs as Compact Scene Representations}
+\section{Modeling with generative scene graphs}
+Scene graphs are a scalable representation framework for 3D scenes, with a long history in computer graphics.
+They have been increasingly used as a unifying representation for a naturalistic combined structure for communicating, rendering, execution, and modeling in 3D graphical programs~\cite{sowizral2000scene}.
+Several approaches to visual perception have proposed that vision operates as an inverse graphics pipeline, inferring the latent state of a scene from an observed generated rendered image \cite{romaszko2017vision, DBLP:journals/corr/KulkarniWKT15, moreno2016overcoming}
+Scene graph models are a natural extension of this line of research, extending modeling to more richly structured relative relations between objects.
 
+\section{Summary of this thesis}
+% We address these as follows. Chapter X does A, chaper Y, soes B, etx.
+The methods employed in this thesis are implemented in the probabilistic programming system \textbf{Gen}~\cite{Cusumano-Towner:2019:GGP:3314221.3314642}.
+Gen differs from other probabilistic programming systems, by emphasizing user freedom and flexibility of implementation over automation of inference, and providing users with an interface for specifying custom inference procedures defined on those models.
+This flexibility enables the development of powerful new tools for working with complex generative programs, like those based on scene graphs.
 
-\section{Summary of Thesis}
-
-\todo
+Chapter 2 specifies the scene graph data type and a reference model, as well as an inference procedure for estimating the underlying geometry of a scene.
+It additionally provides an implementation of this model and inference procedure in Gen.
+Chapter 3 describes methods for visualizing and understanding distributions over the scene graph representation, which is part of the vital infrastructure for working with probabilistic models that leverage it.
+Chapter 4 describes a set of constructed synthetic test cases that allow us to analyze, test, and ultimately improve the behavior of scene graph models and inference procedure.
+Chapter 5 leverages real-world scenes containing YCB objects on a physical tabletop to benchmark modeling and structure inference, and to tune scene graph model hyperparameters on real data.

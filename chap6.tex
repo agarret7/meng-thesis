@@ -1,3 +1,31 @@
 \chapter{Conclusion}
+This thesis has focused extensively on developing utilities and infrastructure for working with generative scene graphs in a practical and principled way.
+We've shown the implementation of a preliminary dynamic scene graph model, and structure inference procedure in the probabilistic programming system Gen.
+We've developed capabilities for visualizing and understanding distributions over scene graphs.
+We've analyzed and benchmarked subcomponents of our scene graph model, demonstrating methods for improving complex generative scene graph programs.
+Finally, we collected real-world data to train and test the accuracy of scene graph modeling and inference, while 
 
-\todo
+\section{Future Directions}
+The capabilities developed in this thesis are sufficient for future researchers and engineers to explore a wide range of exciting basic research and applications in 3D generative scene graph modeling and inference.
+We discuss some future directions that can build off this work in applying generative scene graph models.
+
+\paragraph{Filtering over noisy neural object detections}
+We introduced a novel likelihood that models the output of bottom-up deep neural pose detectors.
+The accuracy of the such a model crucially depends on our ability to infer and correct failures that are present in neural detections.
+This work made initial steps toward improving the prior and likelihood models, but robustly inferring clean 3D scene structure from noisy neural detections remains a key challenge, that is now approachable with this infrastructure.
+
+\paragraph{Random scene generation}
+Generating random ``realistic'' scenes is a key simulation and synthetic data generation problem.
+Properly tuned scene graph priors can be used to generate random scenes with controllable variability.
+Combining hyperparameter learning over specifiable semantic constraints on the relationships of objects allows an expressive class of models that can be replicate essential features of real-world scenes.
+Such data could be used in a wide variety of applications, from synthetic data augmentation, to world generation in video games.
+
+\paragraph{Cognitive architecture for common sense}
+The hypothesis that probabilistic generative models can replicate naturalistic intuition and commonsense reasoning extends from a Bayesian interpretation of cognitive science~\cite{l2008bayesian}.
+This work was completed as part of the Cora project at MIT, whose mission is to develop a system for common-sense reasoning, leveraging modern probabilistic programming systems.
+With utilities for practically developing and testing scene graph models, we lower the barrier to using them as a central representation in a cognitively-inspired architecture.
+
+\paragraph{Picture 2.0: adding motion and scene graphs}
+Picture offered one of the domain-specific probabilistic programming languages for visual scene perception~\cite{kulkarni2015picture}.
+The original language focused on simply-structured, closed-universe representations of single-frame scenes.
+Scene graph models offer the potential for a more extensible scene perception language, expanding the scope of possible models to a dynamic, open-universe that is categorically more expressive.

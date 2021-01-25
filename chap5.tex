@@ -1,16 +1,15 @@
-\chapter{Learning and Testing from Real-World Data}
-
+\chapter{Learning and Testing from Real-World Data} \label{chap:5}
 Enumerative inference on synthetic traces can provide low-level confirmation about basic properties of our model, under simple qualitative conditions.
 However, real-world analysis provides a much richer set of possibilities in terms of analyzing and improving our model.
-We collect a set of real-world videos containing common household items from the YCB object dataset, along with annotated values for all of the variables in the static (single frame) version of our model.
-We then use this data in a gradient search to train a subset of hyperparameters that have thus far been hand-selected through trial-and-error, but may not be properly tuned to model real-world data.
+In this chapter, we collect a set of real-world videos containing common household items from the YCB object dataset, along with annotated values for all of the variables in the static (single frame) version of our model.
+The data is then used in a gradient search to train a subset of hyperparameters that have thus far been hand-selected through trial-and-error, but may not be properly tuned to model real-world data.
 We also measure the performance of our proposed structure inference algorithm on predicting the ground-truth structure from a set of object poses.
 
-\section{Data Specification}
+\section{Data specification}
 We collect a set of experiments with static objects to analyze the model in the static case.
-We add noise via occluders that temporarily block the camera's line of sight to the objects.
+Noise is added via occluders that temporarily block the camera's line of sight to the objects.
 The raw video was collected using the Intel RealSense D435 RGB/Depth camera.
-Only the RGB information is used for the neural detector, but we collect depth data to enable plane detection, and for future tests on models containing likelihood over depth data.
+Only the RGB information is used for the neural detector, but depth data was collected to enable plane detection, and for future tests on models containing likelihood over depth data.
 Observed poses are generated using the publicly provided nVidia DOPE detector GitHub repository.
 Ground truth outlier status is manually annotated for each frame in the collected videos.
 Note that using the vertices, we can also use the scene graph structure to determine which detections are false positives or negatives.
@@ -103,7 +102,10 @@ Table~\ref{table:inhouseDatasetSpec} lists the data collected for each scene, wh
 \pagebreak
 
 \section{Metrics}
-\subsection{Modeling: Marginal Likelihood}
+In evaluating our scene graph model and inference procedure, we need concrete quantitative metrics that can give us a measure how well each component performs.
+We propose a two concrete metrics that can be used in benchmarking and testing: one for modeling and the other for structure inference.
+
+\subsection{Modeling: marginal likelihood}
 The most immediate metric measuring the evidence for our model given the data is the log likelihood.
 Since we've collected complete data for our model, the likelihood simply ends up being the joint probability density of the trace.
 In Gen, given a collection of traces $t \in \mathcal{T}$ and hyperparameters $\theta$, the log-likelihood is:
@@ -111,7 +113,7 @@ In Gen, given a collection of traces $t \in \mathcal{T}$ and hyperparameters $\t
   \ell(\mathcal{T}; \theta) = \sum_{t \in \mathcal{T}} \log p(t_i; \theta)
 \]
 
-\subsection{Structure Inference: Graph Edit Distance}
+\subsection{Structure inference: graph edit distance}
 When evaluating the performance of structure inference, we would like a measure of the similiary of the most probable inferred structure to the ground truth.
 This gives a measure of how far our algorithm is from ground truth when tasked with classifying the structure of an unambiguous scene.
 In particular, we simplify our metric to how well our algorithm correctly determines which objects in a scene are ``contacting''.
@@ -122,7 +124,7 @@ Then, the edit distance is just the size of the symmetric distance $E_1 \triangl
   \mathrm{Edit}(E_1, E_2) = \abs{E_1 \triangle E_2} = \abs{(E_1 \cup E_2) \setminus (E_1 \cap E_2)}
 \]
 
-\section{Learning Hyperparameters with Gradient Ascent}
+\section{Learning hyperparameters with gradient ascent}
 We can perform a data-driven maximum, we can now use gradient-based optimization to automatically tune the static model hyperparameters to our data, and measure the increase in log-likelihood.
 We select 3 hyperparamters $\bm{\sigma} = (\sigma_1, \sigma_2, \sigma_3)$ to optimize over: the standard deviation $\sigma_1 = \sigma_\mathrm{inlier}$ for the observed 3D positions, the standard deviation $\sigma_2 = \sigma_\mathrm{slack}$ for the 1D slack offsets, and the standard deviation $\sigma_3 = \sigma_\mathrm{sliding XY}$ for the latent $(x,y)$ contact parameters.
 We'd like to find
@@ -168,7 +170,7 @@ This longer convergence time suggests that $\sigma_\mathrm{sliding XY}$ may have
 \end{figure}
 
 
-\section{Inlier Detection Observational Model}
+\section{Inlier detection observational model}
 \begin{figure}[H]
   \includegraphics{topdownInlierDetections}
   \caption{
@@ -199,7 +201,7 @@ It may instead be possible to model the correlation between these errors, and us
 \pagebreak
 \flushbottom
 
-\section{Testing Structure Inference}
+\section{Testing structure inference}
 \begin{figure}[H]
   \begin{subfigure}[b]{\textwidth}
     \centering
@@ -209,15 +211,18 @@ It may instead be possible to model the correlation between these errors, and us
     \centering
     \includegraphics[width=\columnwidth]{rjmcmcAfter}
   \end{subfigure}
-  \label{fig:rjmcmcExample}
   \caption{
     Example of the performance on RJMCMC on inferring the structure posterior in a frame from scene \#5.
     (Top) The uniform prior over scene graph structure contains a random assortment of inaccurate classifications.
     (Bottom) The RJMCMC structure inference procedure predicts the correct ground-truth structure with high probability.
   }
+  \label{fig:rjmcmcExample}
 \end{figure}
 Finally, we use our real-world data to evaluate the performance of our RJMCMC procedure for structure inference, on the posterior for our unoptimized and optimized models.
-We want to see how well our procedure is able to classify the ground truth structure, given the correct latent poses of the objects in a scene.
+We aim to see how well our procedure is able to classify the ground truth structure, given the correct latent poses of the objects in a scene\footnote{
+  We omitted extending this gradient search to latent poses, due to an implementation challenge in propagating gradients through custom data structures in Gen.
+  These missing features, if fixed, would allow inferring continuous parameters in the inlier case via gradient-based methods, enabling efficient full scene graph inference.
+}
 However, we only have the ground truth poses for 8 unique static scenes, which limits the number of independent trials we can perform.
 
 To ameliorate this, we augment the data with some sampled noise.

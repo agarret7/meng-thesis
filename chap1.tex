@@ -1,10 +1,7 @@
 \chapter{Introduction}
-The development of modern probabilistic programming systems has enabled a deeper exploration of generative modeling and probabilistic inference procedures.
-Among the applications of these systems, are Bayesian approaches to 3D scene perception and physical reasoning, which have become increasingly common over the last few years~\cite{battaglia2013simulation, izatt2020generative, jampani2015informed, kulkarni2015picture, mansinghka2013approximate, wu2017learning, wu2017neural, romaszko2017vision}.
-This has led to a growing need for modeling and inference components defined over abstract scene representations.
-
 Scene graphs have recently emerged as a proposed unifying representation for 3D scenes, that allows for structured constraints on the relative geometric poses of objects~\cite{bzinberg2020scenegraphs, raboh2020differentiable, johnson2018image}.
-However, with the introduction of this new approach, comes the introduction of several challenges to the practical implementation of scene graph models.
+This approach builds on top of the probabilistic programming paradigm in Bayesian statistics, which has been increasingly common in computer vision applications~\cite{battaglia2013simulation, izatt2020generative, jampani2015informed, kulkarni2015picture, mansinghka2013approximate, wu2017learning, wu2017neural, romaszko2017vision}.
+However, with the introduction of this rich new representation, comes the introduction of several challenges to the practical implementation of scene graph models.
 Among these challenges are: human-editable specification, visualization, priors, structure inference, hyperparameters tuning, and benchmarking.
 This thesis describes the development of engineering infrastructure aimed at addressing these challenges, to enable robust exploration of scene graph modeling and inference in a principled way.
 

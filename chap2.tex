@@ -1,52 +1,51 @@
-\chapter{Scene Graphs}
+\chapter{Scene Graphs} \label{chap:2}
 
-\section{Mathematical Description}
-We model the geometric state of a scene at a single time point as a \emph{scene graph}, which is a tuple $(G, \Theta, Z)$, where $G = (V, E)$ is a directed tree that encodes the scene graph \emph{structure} and $\Theta$ encodes the scene graph \emph{continuous parameters} and $Z$ encodes the scene graph \emph{discrete parameters}.
-Although the framework we present can represent articulated objects, in this paper we only consider scenes involving a set of rigid objects $O$.
+\section{A scene graph model}
+We model the geometric state of a scene at a single time point as a \emph{scene graph}, which is a tuple $(G, \Theta, Z)$, where $G = (V, E)$ is an undirected graph that encodes the scene graph \emph{structure} and $\Theta$ encodes the scene graph \emph{continuous parameters} and $Z$ encodes the scene graph \emph{discrete parameters}.
+Although the framework we present can represent articulated objects, in this document we only consider scenes involving a set of rigid objects $O$.
 The scene graph structure includes a vertex $v_o \in V$ for each object $o \in O$ that represents the 6DoF pose of object $o$, as well as a vertex $r \in V$ that represents the the coordinate frame of the observer.
-A directed edge $e = (v_i, v_j) \in E$ between objects $i, j \in O$ encodes that the pose of object $j$ is parametrized \emph{relative to} the pose of object $i$, by parameters $\theta_e$ and $z_e$.
+An edge $e = (v_i, v_j) \in E$ between objects $i, j \in O$ encodes that the pose of object $j$ is parametrized \emph{relative to} the pose of object $i$, by parameters $\theta_e$ and $z_e$.
 The pose of object $j$ relative to object $i$ is denoted $\Delta x(z_e, \theta_e) \in SE(3)$.
-A directed edge $e = (r, v_j) \in E$ from the root to an object $j \in O$ encodes that the pose of object $j$ is not parametrized relative to that of any object, but is instead a full 6DoF pose $\theta_e \in SE(3)$ where $SE(3)$ is the special Euclidean group consisting of all 6DoF poses.
+An edge $e = (r, v_j) \in E$ from the root to an object $j \in O$ encodes that the pose of object $j$ is not parametrized relative to that of any object, but is instead a full 6DoF pose $\theta_e \in SE(3)$ where $SE(3)$ is the special Euclidean group consisting of all 6DoF poses.
 The continuous and discrete parameters of the scene graph consist of the parameters for each edge in the structure ($\Theta := \{\theta_e\}_{e \in E}$ and $Z := \{z_e\}_{e \in E}$).
-The set of edges $E$ must \emph{span} the set of vertices $V := \{r\} \cup \{v_o\}_{o \in O}$; that is the scene graph structure $G$ is a \emph{directed spanning tree}.
+The set of edges $E$ must \emph{span} the set of vertices $V := \{r\} \cup \{v_o\}_{o \in O}$, and be rooted at $r$; this condition makes the undirected tree isomorphic to the \textit{directed forest} constructed by removing the world node $r$.
 
-\subsection{Computing the 6DoF poses of all objects in the scene} \label{6dofCalculation}
+\subsection{Computing the 6DoF poses of all objects in the scene} \label{section:poses}
 Given a scene graph $(G, \Theta, Z)$ the pose $x_i \in SE(3)$ of an object $i \in O$ relative to the observer coordinate frame can be computed by walking path in the tree $G$ from the root vertex $r \in V$ to the vertex $v_i \in V$, and successively computing the pose of each object along the path from the pose of its parent (the set of all such poses is $X := \{x_i\}_{i \in O}$.
 That is, given pose $x_u \in SE(3)$ and edge $(u, v) \in E$, the pose $x_v \in SE(3)$ is computed as $x_v := x_u \cdot \Delta x(z_e, \theta_e)$ where $\Delta x(z_e, \theta_e) \in SE(3)$ is the relative pose between vertex $u$ and vertex $v$.
 For an edge from the root vertex to an object vertex ($e = (r, v_i)$), $x_u := \mathbf{1}$ (the identity element of $SE(3)$) and $\Delta x(z_e, \theta_e) = \theta_e \in SE(3)$ (note that there are no discrete parameters in this case, so $z_e := ()$).
 The functional form of $\Delta x(z_e, \theta_e)$ for an edge $e$ between two objects is discussed below.
-One requirement is that $\Delta x(z_e, \theta_e)$ is a differentiable function of $\theta_e$; this enables inference algorithm that exploit gradient information.
+One requirement is that $\Delta x(z_e, \theta_e)$ is a differentiable function of $\theta_e$; this enables inference algorithms that exploit gradient information.
 
 \subsection{Modeling face-to-face contact between two objects}
 An edge $(v_i, v_j) \in E$ from object $i$ to object $j$ indicates that the pose of object $j$ is represented relative to the pose of object $i$.
 Various types of relative pose parametrizations for two objects are possible; for simplicity we model objects as polyhedra, and only model face-to-face contact between objects.
-That is, an edge $e = (v_i, v_j)$ indicates that a face of object $i$ is in flush contact with a face of object $j$.
+That is, an edge $e = (v_i, v_j)$ indicates that a face of object $i$ is in contact with a face of object $j$.
 Since each object has multiple faces, the choice of which pair of faces is in contact is encoded in the discrete parameters $z_e$ for the edge.
 Concretely, let $F_i$ and $F_j$ denote the faces of object $i$ and object $j$ respectively
 Then, $z_e \in F_i \times F_j$.
-The continuous parameters $\theta_e$ for an edge $e$ between two objects is an element of $\mathbb{R}^2 \times [0, 2 \pi)$ that contains two translational degrees of freedom ($s, t \in \mathbb{R}$, for the relative offset of the two faces) and one rotational degree of freedom ($\phi \in [0, 2 \pi)$).
+The continuous parameters $\theta_e$ for an edge $e$ between two objects is an element of $\mathbb{R}^2 \times [0, 2 \pi)$ that contains two translational degrees of freedom ($x, y \in \mathbb{R}$, for the relative offset of the two faces) and one rotational degree of freedom ($\phi \in [0, 2 \pi)$).
 For example, a cuboid object $i \in O$, the set of faces is $F_i = \left\{\mathrm{Top, Bottom, Left, Right, Front, Back}\right\}$.
 For an edge $e = (i, j)$ where objects $i, j \in O$ where both objects $i$ and $j$ are cuboids, there are 36 possible values for $z_e$.
 
-\paragraph{Slack variables for face-to-face contact}
+\paragraph{Slack variables for face-to-face contact} \label{section:slack}
 We extend the parametrization of face-to-face contact between objects with three additional degrees of freedom of \emph{slack variables}: (i) one degree of freedom that encodes the perpendicular distance ($d \in [0, \infty)$) between the two contact faces, and (ii) two degrees of freedom for relative orientation of the two faces, encoded the surface normal unit vector $\mathbf{n}$ of the child object's face, relative to the parent object's face, which takes values on the sphere $S^2$.
 Therefore, $\theta_e \in \mathbb{R}^2 \times [0, 2 \pi) \times [0, \infty) \times S^2$ for an edge $e = (v_i, v_j)$ between two objects $i$ and $j$.
 Note that although this edge parametrization uses six degrees of freedom for object-to-object edges like the edge parametrization for edges from the root ($e = (r, v_j)$), the prior distribution on these parameters (described below) encourages object $j$ to be \emph{almost} in face-to-face contact with object $i$; whereas the prior distribution on the pose of object $j$ for an edge of the form $(r, v_j)$ is very different, and is typically a uniform distribution over positions within the scene bounding volume, and a uniform distribution on orientations.
 
-\subsection{A Prior Distribution on Scene Graphs}  % alternative title; representation as a generative program
+\subsection{A prior distribution on scene graphs} \label{section:prior}
 Various prior distributions on scene graphs are possible.
 In our experiments, we use a generic prior distribution on scene graphs over a collection of objects $O$ that factors into two components:
 (i) a prior distribution on scene graph structures $G$, denoted $p(G)$, and
 (ii) a prior distribution on scene graph parameters $(Z, \Theta)$ given structure, denoted $p(Z, \Theta | G)$.
 While uncertainty about the number of objects is possible to represent in our framework and implementation, for simplicity assume that the set of objects is known a-priori, and that there is one vertex for each object, and one vertex representing the observer coordinate frame, so $V$ is fixed a-priori to $\{r\} \cup \{v_o\}_{o \in O}$.
 Therefore, $p(G)$ reduces to a prior distribution on edges in the scene graph.
-For the prior distribution on structure, we use a uniform distribution on directed trees that are rooted at vertex $r$ and span all $|O| + 1$ vertices in the graph.
-This set of directed trees is isomorphic to the set of undirected spanning trees over $|O| + 1$ vertices.
-Therefore, the prior probability of a graph $G = (V, E)$ is obtained by using Cayley's formula to count the number of undirected spanning trees on $|O| +1$ vertices:
+For the prior distribution on structure, we use a uniform distribution on undirected trees that are rooted at vertex $r$ and span all $|O| + 1$ vertices in the graph.
+Therefore, the prior probability of a graph $G = (V, E)$ is obtained by using Cayley's formula to count the number of undirected trees on $|O| +1$ vertices:
 \begin{equation}
     p(G) := p_{\mathrm{unif}(|O|)}(G) := \left\{
     \begin{array}{ll}
-    (|O| + 1)^{1 - |O|} & \mbox{if $G$ is a directed spanning tree over vertices $V$ rooted at $r$}\\
+    (|O| + 1)^{1 - |O|} & \mbox{if $G$ is a undirected tree over vertices $V$ rooted at $r$}\\
     0 & \mbox{otherwise}
     \end{array}
     \right.
@@ -57,30 +56,28 @@ The prior distribution on scene graph parameters factors over the edges in the s
 \end{equation}
 where $p_e(z_e, \theta_e)$ is a probability distribution on $z_e$ and $\theta_e$ that depends on the two vertices in the edge $e = (u, v)$.
 For edges $e = (r, v_j)$ where $j$ is an object, $z_e = ()$ and $p_e(z_e, \theta_e)$ is the uniform distribution on elements of $B \times SO(3)$ where $B$ is the bounding volume of the scene and $SO(3)$ is 3D rotation group (the uniform distribution on $SO(3)$ is given by the Haar measure).
-For edges $e = (v_i, v_j)$ where $i$ and $j$ are objects, recall that $z_e \in F_i \times F_j$ and (using the edge parametrization including slack variables) $\theta_e = (s, t, \phi, d, \alpha_1, \alpha_2) \in \mathbb{R}^2 \times [0, 2 \pi) \times [0, \infty) \times [0, 2 \pi)^2$.
+For edges $e = (v_i, v_j)$ where $i$ and $j$ are objects, recall that $z_e \in F_i \times F_j$ and (using the edge parametrization including slack variables) $\theta_e = (x, y, \phi, d, \alpha_1, \alpha_2) \in \mathbb{R}^2 \times [0, 2 \pi) \times [0, \infty) \times [0, 2 \pi)^2$.
 The prior distribution on edge parameters is:
 \begin{equation}
     p_e(z_e, \theta_e) := \frac{1}{|F_i| |F_j|}
-    \cdot p_{\mathrm{norm}(0, \sigma)}(s) \cdot p_{\mathrm{norm}(0, \sigma)}(t)
+    \cdot p_{\mathrm{norm}(0, \sigma_\mathrm{sliding XY})}(x) \cdot p_{\mathrm{norm}(0, \sigma)}(y)
     \cdot \frac{1}{2 \pi}
-    \cdot p_{\mathrm{exp}(\beta)}(d)
-    \cdot \frac{1}{2 \pi}
-    \cdot \frac{1}{2 \pi}
+    \cdot p_{\mathrm{norm(0, \sigma_\mathrm{slack})}(\beta)}(d)
 \end{equation}
-(where $p_{\mathrm{norm}}$ and $p_{\mathrm{exp}}$ are the normal and exponential distribution density functions, respectively).
+where $p_{\mathrm{norm}}$ is the normal distribution density function.
 
-\subsection{Probabilistic Dynamics on Scene Graphs}
+\subsection{Probabilistic dynamics on scene graphs} \label{section:dynamics}
 \begin{figure}[t]
   \centering
   \includegraphics[width=\textwidth]{sceneGraphStructureTransition}
   \caption{
-    Our random walk transition model on the structure of scene graphs modifies the spanning tree that defines the scene graph structure.
+    Our random walk transition model on the structure of scene graphs modifies the tree that defines the scene graph structure.
     Left: A transition from structure $G'$ to $G$ that makes $o_5$ a child of the root $r$ instead of object $o_3$.
     In $G$, parametrization of the pose of $o_5$ was previously parametrized relative to the pose of object $o_3$; in $G'$ it is parametrized independently of the pose of the other objects.
     Right: The transition on structures is reversible, and the reverse transition is unique.
     This allows us to use the transition model on structure as the basis of reversible jump MCMC moves on structure, as well within the dynamics model on structure.
   }
-  \label{fig:sceneGraphS}
+  \label{fig:sceneGraphStructureTransition}
 \end{figure}
 We build temporal models of scene geometry based on Markov chains of scene graphs $\{(G_t, \Theta_t, Z_t)\}_{t=1}^T$, where $t$ indexes time, with transitions $p(G_t, \Theta_t, Z_t | G_{t-1}, \Theta_{t-1}, Z_{t-1})$.
 We factor the dynamics model on scene graphs decomposes into a dynamics model on scene graph structure, and a dynamics on parameters:
@@ -93,7 +90,7 @@ The dynamics on graph structure is based on a mixture of a random walk on struct
 \begin{equation}
     p(G_t | G_{t-1}) :=  0.9 \cdot p_{\mathrm{walk}}(G_t | G_{t-1}) + 0.1 \cdot p_{\mathrm{unif}(|O|)}(G_t)
 \end{equation}
-where $p_{\mathrm{walk}}(G' | G)$ is the distribution on graph structures induced by a sampling process in which one vertex in the undirected spanning tree is selected at random, severed from the tree, and grafted back onto the graph at a uniformly chosen vertex, subject to the condition that the resulting graph is a spanning tree;
+where $p_{\mathrm{walk}}(G' | G)$ is the distribution on graph structures induced by a sampling process in which one vertex in the undirected tree is selected at random, severed from the tree, and grafted back onto the graph at a uniformly chosen vertex, subject to the condition that the resulting graph is a tree;
 Figure~\ref{fig:sceneGraphStructureTransition} shows an example of this process.
 Recall that since the tree contains the root node $r$, this process can change the edge type $(u, v_j)$ for an object $i$ from $(r, v_j)$ (representing independent 6DoF pose) to $(v_i, v_j)$ (representing flush contact pose with another object $v_i$.
 The dynamics on parameters factor according to edges in the graph:
@@ -103,7 +100,6 @@ The dynamics on parameters factor according to edges in the graph:
 If an edge $e$ is present in both $G_t$ and $G_{t-1}$, then this distribution is a mixture of a random walk and a uniform distribution.
 If an edge $e$ in $G_t$ was not present in $G_{t-1}$, then this distribution is a uniform distribution.
 
-\subsection{Robust Pose Likelihood for Modeling Noisy Object Detections}
 \begin{figure}[H]
   \includegraphics[width=\columnwidth]{neuralModeling}
   \caption{
@@ -111,12 +107,14 @@ If an edge $e$ in $G_t$ was not present in $G_{t-1}$, then this distribution is 
   }
   \label{fig:neuralModeling}
 \end{figure}
-Our model differs from previous inverse graphics work in an important way; while most inverse graphics pipelines create a full generative model all the way to pixel-level data, we instead model the output of a bottom-up feature detector that estimates the poses of objects from visual data.
+\subsection{Robust pose likelihood for noisy object detections}
+Our model differs from previous inverse graphics work in an important way; instead of creating a full generative model all the way to pixel-level data, we instead model the output of a bottom-up feature detector that estimates the poses of objects from visual data.
 This was specifically motivated by the desire to leverage the power of existing deep learning approaches to object detection, and integrate them with a Bayesian approach.
+We do not justify the relative advantages of this approach in this thesis, but it is an important feature of the model that has implications for the forms of tests that are conducted later in the document.
 Figure~\ref{fig:neuralModeling} shows the abstract pipeline for our model.
 Our generative model is thus grounded in attempting to explain the output of a noisy detector, which requires us to accurately predict the presence and distribution of ``outlier'' detections.
 In practice, the failure modes of deep neural networks are complex and varied, and can depend on a huge range of factors, including occlusion, lighting condition, the presence of novel objects, etc.
-We provide a simple first-pass likelihood model for representing noisy bottom-up detectors, and note that developing more accurate likelihoods for either noisy bottom-up detectors, or directly rendered visual data, is an important next step.
+We provide a simple first-pass likelihood model for representing noisy bottom-up detectors, and note that developing more accurate likelihoods in scene graph models is a rich avenue for future work in this area.
 
 We introduce a likelihood over observed object pose detections $Y := \{y_o\}_{o \in O} = \{(y_o^\mathrm{pos}, y_o^\mathrm{rot})\}_{o \in O}$.
 The likelihood consists of two components in a mixture model:
@@ -127,13 +125,18 @@ The second component represents where the inlier cases where the neural detector
 \begin{equation} \label{eq:noisy-pose-likelihood}
   p(Y | X, \sigma, \kappa) =
   \prod_{o \in O}
-    \left(p_\mathrm{outlier} \cdot \frac{1}{LWH} +
-    (1 - p_\mathrm{outlier}) \cdot \mathcal{N}\left(y_o^\mathrm{pos}; x_o^\mathrm{pos}, \sigma\right) \cdot
-    \mathrm{VMF}(y_o^\mathrm{rot}; x_o^\mathrm{rot}, \kappa)\right)
+    \left(\frac{p_\mathrm{outlier}}{LWH} +
+    (1 - p_\mathrm{outlier}) \cdot p_\mathrm{norm(x_o^\mathrm{pos}, \sigma_\mathrm{inlier})}\left(y_o^\mathrm{pos}\right) \cdot
+    p_\mathrm{vmf(x_o^\mathrm{rot}, \kappa_\mathrm{inlier})}(y_o^\mathrm{rot})\right)
 \end{equation}
 
+\subsection{Representation as a generative program}
+We implement our scene graph model in the Gen probabilistic proramming system~\cite{Cusumano-Towner:2019:GGP:3314221.3314642}.
+We leverage the dynamic DSL provided within Gen to implement the different modeling components as modular generative functions.
+Figure~\ref{fig:model} shows example code of a probabilistic program that implements our scene graph model.
 
-\subsection{Reversible Jump MCMC for Structure Inference}
+
+\section{Inference over scene structure} \label{section:rjmcmc}
 When considering how to infer the posterior distribution over scene graph structure $G$, we might take inspiration from our graph random walk distribution $p_\mathrm{walk}(G_t|G_{t_1})$ to build an incremental graph modification kernel that proposes small changes to the structure.
 However, when changing an edge type from $e \to e'$, we also induce a new set of parameters $\theta_{e'}$ that must be simultaneously proposed or resimulated.
 Ultimately these two parameterizations are just different ways to express identical absolute poses $x_j = x'_j$, as either relative to another object, or to the observer coordinate frame.
@@ -142,6 +145,7 @@ Reversible jump MCMC (RJMCMC) is a generalization of the MH algorithm that allow
 We provide the formulation of RJMCMC here without proof of asymptotic correctness; for a full derivation see Green et. al~\cite{green2009reversible}.
 We define moves over a projection of the scene graph model to the static case; the dynamic case can easily be extended with an additional parameter for time.
 
+\section{Reversible jump moves}
 Define a set of models $k \in \mathcal{K}$, each with latent variables $\theta_k \in \R^{N_k}$ and joint density $p_k(k,\theta_k,\mathcal{D})$, as well as a set of reversible jump moves $m \in \mathcal{M}$, each of which switches between two models $k,k' \in \mathcal{K}$.
 For each model, we have a distribution over possible moves $q_k(m)$ with support over a subset of $\mathcal{M}$.
 Each reversible jump move from $k \to k'$ proposes a value for $\theta_{k'}$ given $\theta_{k}$, using a differentiable bijection $f$.
@@ -162,31 +166,28 @@ We call the move corresponding to this $m_\mathrm{floating}$, and $q_\mathrm{sli
 The slack terms mean both floating and sliding continuous parameters have 6DoF, thereby precluding the need for sampling auxiliary continuous random variables; this is the main motivation for explicitly modeling a slack term.
 
 The final component are the bijections.
-All sliding to floating moves have the bijection $f_{m_\mathrm{floating}}(G, \Theta, Z) = (G', \Theta', Z')$, where $E' = E \setminus \{(i,j)\} \cup \{(r,j)\})$, $z'_{(i,j)} = ()$, and $\theta_{(i,j)}$ is calculated using the method described in section~\ref{6dofCalculation}.
+All sliding to floating moves have the bijection $f_{m_\mathrm{floating}}(G, \Theta, Z) = (G', \Theta', Z')$, where $E' = E \setminus \{(i,j)\} \cup \{(r,j)\})$, $z'_{(i,j)} = ()$, and $\theta_{(i,j)}$ is calculated using the method described in~\ref{section:poses}.
 All floating to sliding moves inversely have the bijection $f_{(i, f_i, f_j)}(G', \Theta', Z') = (G, \Theta, Z)$, where $E = E' \setminus \{(r,j)\} \cup \{(i,j)\})$, $z'_{(i,j)} = (f_i, f_j)$, and $\theta_{(i,j)}$ is calculated as the sliding continuous parameters given contacting faces $f_i, f_j$ and parent pose $x_i$, such that the absolute pose $x'_j = x_j$.
 
 The position parameterizations in the floating and sliding cases are both $\R^3$, and thus the Jacobian correction is simply $1$ for these subspaces.
 Orientations are slightly more complex; in the floating case, the orientation is represented as a unit vector in $S^3$ (which has a double-covering surjective homomorphism to the rotation group SO(3)).
 In the sliding case, the orientation is represented as the Hopf fibration, which has local product structure $S^2 \times S^1$.
-This local topology means our Jacobian correction for the transformation between these spaces is constant.
-\todo[add calculation of Jacobian correction]
-\begin{equation}
-  \abs{\det J_{f_{m_\mathrm{sliding}}}} = \abs{\det J_{f_{m_\mathrm{floating}}}}^{-1} = 4
-\end{equation}
+This local topology means our Jacobian correction for the transformation between these spaces is constant, and can be simply calculated as
+\[
+  \abs{\det J_{f_{m_\mathrm{sliding}}}} = \abs{\det J_{f_{m_\mathrm{floating}}}}^{-1} = \frac{\mu(S^2) \cdot \mu(S^1)}{\mu(\mathrm{SO}(3))} = \frac{\mu(S^2) \cdot \mu(S^1)}{\mu(S^3)/2} = \frac{(4\pi) \cdot (2\pi)}{\pi \cdot \pi} = 8
+\]
 
 Gen automatically calculates the acceptance ratio for RJMCMC and makes appropriate MH moves, given the involutions and associated Jacobian corrections.
 
-\section{Representation as a Generative Program}
-We implement our scene graph model in the Gen probabilistic proramming system\footnote{\url{https://www.gen.dev}}~\cite{Cusumano-Towner:2019:GGP:3314221.3314642}.
-We leverage the dynamic DSL provided within Gen to implement the different modeling components as modular generative functions.
-Figure~\ref{fig:model} shows example code of a probabilistic program that implements our scene graph model.
-
+\subsection{Representation as an inference program}
 Gen provides an abstract interface to automatically run user-specified programmable inference on a generative program using its built-in inference library.
 Among the algorithms provided, Gen provides utilities for running RJMCMC, by specifying a generative proposal function to generate auxiliary randomness, and an associated involution function that provides the associated Jacobian correction.
-Figure~\ref{fig:inference} shows an user-space implementation of these algorithmic components.\footnote{
-  We note that at the time of writing this document, Gen has added a DSL for involutive MCMC, which can automate the calculation of Jacobian corrections using differentiable programming, and provides convenience macros to further simplify the development of custom RJMCMC algorithms.
+Figure~\ref{fig:inference} shows an user-space implementation of these algorithmic components
+\footnote{
+  At the time of writing this document, Gen has added a DSL for involutive MCMC which and provides an interface for the development of custom RJMCMC algorithms.
   See documentation at \url{https://www.gen.dev/dev/ref/mcmc/\#Involutive-MCMC-1}
-}.
+}
+, while Figure~\ref{fig:particleFilter} shows how they may be used in a top-level inference procedure (ie. a particle filter).
 
 % MODEL AND INFERENCE CODE FIGURE BEGIN
 
@@ -202,7 +203,7 @@ Figure~\ref{fig:inference} shows an user-space implementation of these algorithm
     for t = 1:T
         # structure and parameter dynamics
         if t == 1
-            structure ~ UniformDirectedForest(N)
+            structure ~ UniformUndirectedTree(N+1)
             params ~ params_init(structure)
         else
             (prev_structure, prev_params) = decompose(gs[t-1])
@@ -367,16 +368,61 @@ end
 \label{fig:inference}
 \end{figure}
 
+\begin{figure}
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+function rejuvenation_kernel(traces)
+  for (i, tr) in enumerate(traces)
+    for _ in 1:iters
+      # gaussian drift, gradient search, data-driven proposals, etc.
+      tr = continuous_parameters_kernel(tr)
+
+      # our custom rjmcmc move
+      tr = rjmcmc_structure_kerenl(tr)
+    end
+    traces[i] = tr
+  end
+end
+\end{lstlisting}
+\subcaption{
+  Example rejuvenation kernel for continuous and discrete parameters
+}
+\end{subfigure}
+
+\begin{subfigure}{\textwidth}
+\begin{lstlisting}
+function scenegraph_particle_filter(observed_poses::Vector{SceneGraph})
+    # generate initial trace
+    init_obs = scenegraph_to_choicemap(observed_poses[1], all_objs)
+    state = initialize_particle_filter(model, model_args, init_obs, num_particles)
+
+    # run forward model and inference
+    for t = 1:length(observed_poses)+1
+        new_obs = scenegraph_to_choicemap(observed_poses[t+1], all_objs)
+        state = rejuvenation_kernel(get_traces(state))
+        particle_filter_step!(state, (t+1,), (UnknownChange(),), new_obs)
+    end
+    return state
+end
+\end{lstlisting}
+\subcaption{
+  Top-level inference code for a particle filter scene graph model.
+}
+\end{subfigure}
+\caption{Top-level inference procedure for particle filtering}
+\label{fig:particleFilter}
+\end{figure}
+
 % MODEL AND INFERENCE CODE FIGURE END
 
-\section{Example Application Domains of Scene Graphs}
+\section{Example application domains of scene graphs}
 We present some example visual perception domains where scene graphs provide a useful abstraction for representing scene information.
 Our applications have thus far been applied with a specific orientation toward two main problems: inferring structured object relationships from unstructured poses of those objects, and robustly filtering object poses under failures in bottom-up visual perception.
 Our modeling choices were made with these goals in mind, so we focus on describing how these features are captured by our representation.
 In theory, we can extend these models to include even richer information about a scene, including dynamic physical properties of objects, or their functional (as opposed to geometric) relationships; we leave these and other applications for later work.
 
-\subsection{YCB Objects on a Synthetic Tabletop}
-\begin{figure}[h]
+\begin{figure}[H]
+  \centering
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[scale=0.18]{ycbSynthetic1}
@@ -395,19 +441,17 @@ In theory, we can extend these models to include even richer information about a
   \end{subfigure}
   \caption{
     Synthetic scenes generated using the GenSceneGraphs library in simulated dim light.
-    The colored wireframe bounding boxes represent objects in the scene graph, and the white boxes represent contact edges (see Chapter~\ref{chapter3} for more detail on how this visualization was produced).
+    The colored wireframe bounding boxes represent objects in the scene graph, and the white boxes represent contact edges (see Chapter~\ref{chap:3} for more detail on how this visualization was produced).
   }
   \label{fig:syntheticYCBScene}
 \end{figure}
-
+\subsection{YCB objects on a synthetic tabletop}
 Our scene graph abstraction is concretely implemented as a part of the GenSceneGraphs library.
 This library provides facilities for constructing and manipulating scene graphs composed of objects that can be rendered in a synthetic view.
-Figure~\ref{syntheticYCBScene} shows a variety of example scenes generated using this library; each visualized scene has an underlying scene graph representation that captures all relevant information.
-As such, these rendered scenes show an intuitive view of what our information our representation captures.
+Figure~\ref{fig:syntheticYCBScene} shows a variety of example scenes generated using this library; each visualized scene has an underlying scene graph representation that captures all relevant information.
+As such, these rendered scenes show an intuitive view of what our information our representation captures. \\
 
-
-\subsection{Real YCB Objects on a Physical Tabletop}
-\begin{figure}[H]
+\begin{figure}[t]
   \begin{subfigure}[b]{0.45\textwidth}
     \centering
     \includegraphics[scale=0.3]{ycbVideoGroundTruth}
@@ -443,7 +487,7 @@ As such, these rendered scenes show an intuitive view of what our information ou
   }
   \label{fig:realWorldSceneGraphs}
 \end{figure}
-
+\subsection{Real YCB objects on a physical tabletop}
 Our scene graph representation can be used to represent information about real-world scenes as well.
 Figure~\ref{fig:realWorldSceneGraphs} shows how scene graphs can represent the underlying poses and geometric relationships between objects in the real world.
 In contrast to the synthetic scenes, the real world contains a much larger variety and range of extraneous variables, that inject noise into visual perception systems and make inference more difficult.

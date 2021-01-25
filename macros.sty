@@ -212,3 +212,13 @@ texcl=true % interpet comments as LaTeX
 \algrenewtext{EndParFor}{\algorithmicendparfor}
 % mute last statement
 \algtext*{EndParFor}
+
+\makeatletter
+\def\mathcolor#1#{\@mathcolor{#1}}
+\def\@mathcolor#1#2#3{%
+  \protect\leavevmode
+  \begingroup
+    \color#1{#2}#3%
+  \endgroup
+}
+\makeatother

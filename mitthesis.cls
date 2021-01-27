@@ -100,10 +100,10 @@
 %
 %%%% Parameters to initialize for boilerplate page:
 %
-%	\title{Mixed Circular Cylindrical Shells}
+% \title{Mixed Circular Cylindrical Shells}
 % 	\author{J. Casey Salas}
 % 	\prevdegrees{B.S., University of California (1978) \\
-%		     S.M., Massachusetts Institute of Technology (1981)}
+% 	     S.M., Massachusetts Institute of Technology (1981)}
 % 	\department{Department of Electrical Engineering and Computer Science}
 % 	\degree{Doctor of Philosophy}
 %% If the thesis is for two degrees simultaneously, list them both
@@ -455,8 +455,7 @@ by\par
 \par
 \@prevdegrees
 \par
-\choosecase{} \choosecase{\@department} \\
-\choosecase{Proposal for Thesis Research in partial fulfillment of the requirements for the}
+\choosecase{Submitted to the department of Electrical Engineering and Computer Science in partial fulfillment of the requirements for the}
 \choosecase{\@degreeword} 
 \choosecase{of}
 \par
@@ -469,7 +468,7 @@ at the
 \@copyrightnotice
 \par
 \vskip 3\baselineskip
-\signature{Author}{\@department \\ \@thesisdate}
+\signature{Signature of Author}{\@department \\ \@thesisdate}
 \par
 \vfill
 \unvbox\@titlesupervisor
